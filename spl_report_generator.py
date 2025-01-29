@@ -172,6 +172,7 @@ trusted Token Program"""
     additional_data = [["Field", "Value"]]
     
     field_order = [
+        'owner_program',  # Added owner program as first field
         'freeze_authority',
         'permanent_delegate',
         'transaction_fees',
@@ -179,15 +180,33 @@ trusted Token Program"""
         'confidential_transfers'
     ]
     
+    # Define program name mapping
+    PROGRAM_NAMES = {
+        "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA": "Token Program",
+        "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb": "Token 2022 Program"
+    }
+    
     # Add fields in specified order with error handling
     for field in field_order:
         value = token_data.get(field, 'None')
         if value in ['N/A', None, '']:
             value = 'None'
+            
+        # Special handling for owner program to show address and name
+        if field == 'owner_program' and value != 'None':
+            program_name = PROGRAM_NAMES.get(value, "Unknown Program")
+            value = f"{value} ({program_name})"
+            
         if isinstance(value, dict):
             value = json.dumps(value, indent=2)
+            
+        # Format the field name for display
+        display_name = str(field).replace('_', ' ').title()
+        if field == 'owner_program':
+            display_name = 'Owner Program'
+            
         additional_data.append([
-            Paragraph(str(field).replace('_', ' ').title(), cell_style),
+            Paragraph(display_name, cell_style),
             Paragraph(str(value), cell_style)
         ])
     
