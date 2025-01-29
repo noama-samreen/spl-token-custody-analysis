@@ -9,31 +9,14 @@ import os
 
 # Page config
 st.set_page_config(
-    page_title="Solana Token Analyzer",
-    page_icon="��",
-    layout="wide",
-    menu_items={} # This removes the three-dot menu
+    page_title="Solana Token Custody Risk Analyzer",
+    page_icon="🔍",
+    layout="wide"
 )
 
-# Custom CSS to hide the GitHub icon/star button
+# Custom CSS for better UI
 st.markdown("""
 <style>
-    /* Hide the GitHub icon/star button */
-    .stDeployButton, .viewerBadge_container__1QSob {
-        display: none !important;
-    }
-    
-    /* Hide hamburger menu button */
-    #MainMenu {
-        visibility: hidden;
-    }
-    
-    /* Hide 'Made with Streamlit' footer */
-    footer {
-        visibility: hidden;
-    }
-    
-    /* Rest of your existing CSS */
     .main {
         padding: 2rem;
     }
@@ -73,7 +56,7 @@ st.markdown("""
 
 # Header
 st.markdown("<div class='header-container'>", unsafe_allow_html=True)
-st.title("🔍 Solana Token Analyzer")
+st.title("🔍 Solana Token Custody Risk Analyzer")
 st.markdown("Analyze token details from the Solana blockchain, including Token-2022 program support")
 st.markdown("</div>", unsafe_allow_html=True)
 
@@ -230,7 +213,7 @@ with tab2:
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center; color: #666;'>
-    Made with ❤️ by noamasamreen | 
+    Noama Samreen | 
     <a href='https://github.com/yourusername/solana-token-analyzer' target='_blank'>GitHub</a>
 </div>
 """, unsafe_allow_html=True) 
