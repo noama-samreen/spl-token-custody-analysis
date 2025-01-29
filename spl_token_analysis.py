@@ -232,8 +232,30 @@ async def get_token_details_async(token_address: str, session: aiohttp.ClientSes
 
 def process_token_data(account_data: Dict, token_address: str) -> Tuple[TokenDetails, str]:
     """Process the token data and return structured information"""
-    parsed_data = account_data.get("data", {}).get("parsed", {})
+    # Check if this is a system account
     owner_program = account_data.get('owner', 'N/A')
+    if owner_program == "11111111111111111111111111111111":
+        return TokenDetails(
+            name="N/A",
+            symbol="N/A",
+            address=token_address,
+            owner_program="System Program",
+            freeze_authority=None,
+            security_review="NOT_A_TOKEN"
+        ), owner_program
+
+    # Check if it's a valid token program
+    if owner_program not in [TOKEN_PROGRAM, TOKEN_2022_PROGRAM]:
+        return TokenDetails(
+            name="N/A",
+            symbol="N/A",
+            address=token_address,
+            owner_program=f"{owner_program} (Not a token program)",
+            freeze_authority=None,
+            security_review="NOT_A_TOKEN"
+        ), owner_program
+
+    parsed_data = account_data.get("data", {}).get("parsed", {})
     owner_label = get_owner_program_label(owner_program)
     
     info = parsed_data.get("info", {})
