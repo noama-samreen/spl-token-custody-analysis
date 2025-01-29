@@ -83,7 +83,8 @@ def create_additional_table(data, cell_style):
         ('TEXTCOLOR', (0,0), (-1,-1), colors.black),
         ('PADDING', (0,0), (-1,-1), 12),
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#f9f9f9')])  # Alternating rows
+        ('ROWBACKGROUNDS', (0,1), (-1,-2), [colors.white, colors.HexColor('#f9f9f9')]),  # Alternating rows except last
+        ('BACKGROUND', (0,-1), (-1,-1), colors.HexColor('#f8f8f8')),  # Slight emphasis on last row
     ]))
     return table
 
@@ -152,15 +153,40 @@ trusted Token Program"""
     
     # Additional details table
     additional_data = [["Field", "Value"]]
-    skip_fields = {'name', 'symbol', 'address', 'owner_program'}
-    for key, value in token_data.items():
-        if key not in skip_fields:
+    
+    # Define the order of fields (security_review will be added last)
+    field_order = [
+        'freeze_authority',
+        'permanent_delegate',
+        'transaction_fees',
+        'transfer_hook',
+        'confidential_transfers'
+    ]
+    
+    # Add fields in specified order
+    for field in field_order:
+        if field in token_data:
+            value = token_data[field]
             if isinstance(value, dict):
                 value = json.dumps(value, indent=2)
             additional_data.append([
-                Paragraph(str(key).replace('_', ' ').title(), cell_style),
+                Paragraph(str(field).replace('_', ' ').title(), cell_style),
                 Paragraph(str(value), cell_style)
             ])
+    
+    # Add security review as the last row with emphasis
+    security_value = token_data.get('security_review', 'N/A')
+    security_style = ParagraphStyle(
+        'SecurityCell',
+        parent=cell_style,
+        textColor=colors.HexColor('#006400') if security_value == 'PASSED' else colors.red,
+        fontName='Helvetica-Bold'
+    )
+    
+    additional_data.append([
+        Paragraph("Security Review", cell_style),
+        Paragraph(security_value, security_style)
+    ])
     
     elements.append(create_additional_table(additional_data, cell_style))
     
