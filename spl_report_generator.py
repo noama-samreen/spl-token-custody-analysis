@@ -1,3 +1,50 @@
+import os
+from datetime import datetime
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+
+def create_styles():
+    styles = getSampleStyleSheet()
+    
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=16,
+        spaceAfter=30
+    )
+    
+    cell_style = ParagraphStyle(
+        'CustomCell',
+        parent=styles['Normal'],
+        fontSize=10,
+        spaceAfter=10
+    )
+    
+    context_style = ParagraphStyle(
+        'CustomContext',
+        parent=styles['Normal'],
+        fontSize=12,
+        spaceAfter=12
+    )
+    
+    return styles, title_style, cell_style, context_style
+
+def create_basic_table(data, cell_style):
+    table = Table(data, colWidths=[2*inch, 4*inch])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.white),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    return table
+
 def create_pdf(token_data, output_dir):
     """Generate PDF for a single token"""
     # Create filename
