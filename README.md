@@ -74,7 +74,3 @@ The analyzer checks for several security-relevant features:
    ```bash
    streamlit run app.py
    ```
-
-## License
-
-Licensed under the Apache License, Version 2.0
