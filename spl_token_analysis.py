@@ -25,13 +25,15 @@ RETRY_DELAY = 2.0  # Additional delay when rate limited
 CONCURRENT_LIMIT = 1  # Back to original value
 SESSION_TIMEOUT = aiohttp.ClientTimeout(total=30)
 
+# Add this constant at the top with other constants
+PUMP_FUN_PROGRAM = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"
+
+# Update the OWNER_LABELS dictionary
 OWNER_LABELS = {
     TOKEN_PROGRAM: "Token Program",
-    TOKEN_2022_PROGRAM: "Token 2022 Program"
+    TOKEN_2022_PROGRAM: "Token 2022 Program",
+    PUMP_FUN_PROGRAM: "Pump.fun Program"
 }
-
-# Add constant at the top
-PUMP_FUN_PROGRAM = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"
 
 async def get_metadata_account(mint_address: str) -> Tuple[PublicKey, int]:
     """Derive the metadata account address for a mint"""
@@ -219,9 +221,22 @@ async def get_token_creator(session: aiohttp.ClientSession, token_address: str) 
                     return None
                 
                 # Check if Pump.fun program was involved in the transaction
-                for account in tx_data["result"]["transaction"]["message"]["accountKeys"]:
+                transaction = tx_data["result"]["transaction"]
+                account_keys = transaction["message"]["accountKeys"]
+                instructions = transaction["message"]["instructions"]
+                
+                # Check if Pump.fun program is in the account keys and used in any instruction
+                pump_fun_index = None
+                for i, account in enumerate(account_keys):
                     if account["pubkey"] == PUMP_FUN_PROGRAM:
-                        return PUMP_FUN_PROGRAM
+                        pump_fun_index = i
+                        break
+                
+                if pump_fun_index is not None:
+                    # Check if any instruction uses the Pump.fun program
+                    for instruction in instructions:
+                        if instruction.get("programId") == pump_fun_index:
+                            return PUMP_FUN_PROGRAM
                 
                 return None
                 
@@ -297,8 +312,9 @@ async def get_token_details_async(token_address: str, session: aiohttp.ClientSes
 
 def process_token_data(account_data: Dict, token_address: str) -> Tuple[TokenDetails, str]:
     """Process the token data and return structured information"""
-    # Check if this is a system account
     owner_program = account_data.get('owner', 'N/A')
+    
+    # Check if this is a system account
     if owner_program == "11111111111111111111111111111111":
         return TokenDetails(
             name="N/A",
@@ -307,6 +323,17 @@ def process_token_data(account_data: Dict, token_address: str) -> Tuple[TokenDet
             owner_program="System Program",
             freeze_authority=None,
             security_review="NOT_A_TOKEN"
+        ), owner_program
+
+    # Check if it's a Pump.fun token
+    if owner_program == PUMP_FUN_PROGRAM:
+        return TokenDetails(
+            name="N/A",
+            symbol="N/A",
+            address=token_address,
+            owner_program=f"{owner_program} (Pump.fun Token)",
+            freeze_authority=None,
+            security_review="PUMP_FUN_TOKEN"
         ), owner_program
 
     # Check if it's a valid token program
