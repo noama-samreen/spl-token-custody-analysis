@@ -20,7 +20,9 @@ METADATA_PROGRAM_ID = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
 MAX_RETRIES = 3
 BASE_DELAY = 2.0  # 2 second between requests
 RETRY_DELAY = 2.0  # Additional delay when rate limited
-CONCURRENT_LIMIT = 1
+
+# Original constants
+CONCURRENT_LIMIT = 1  # Back to original value
 SESSION_TIMEOUT = aiohttp.ClientTimeout(total=30)
 
 OWNER_LABELS = {
@@ -52,6 +54,7 @@ async def get_metadata(session: aiohttp.ClientSession, mint_address: str) -> Opt
     """Fetch metadata for a token with more conservative retry logic"""
     for retry in range(MAX_RETRIES):
         try:
+            # Add base delay before every request
             await sleep(BASE_DELAY)
             
             metadata_address, _ = await get_metadata_account(mint_address)
@@ -71,7 +74,7 @@ async def get_metadata(session: aiohttp.ClientSession, mint_address: str) -> Opt
             async with session.post(SOLANA_RPC_URL, json=payload) as response:
                 if response.status == 429:  # Rate limit hit
                     if retry < MAX_RETRIES - 1:
-                        wait_time = RETRY_DELAY * (2 ** retry)
+                        wait_time = RETRY_DELAY * (2 ** retry)  # Exponential backoff
                         logging.warning(f"Rate limit hit in metadata fetch, waiting {wait_time} seconds...")
                         await sleep(wait_time)
                         continue
@@ -82,20 +85,24 @@ async def get_metadata(session: aiohttp.ClientSession, mint_address: str) -> Opt
                     
                 data = await response.json()
                 
+            # Parse the metadata account data
             account_data = data["result"]["value"]["data"][0]
             decoded_data = base64.b64decode(account_data)
             
-            if len(decoded_data) < 8:
+            if len(decoded_data) < 8:  # Ensure we have enough data
                 return None
                 
             try:
+                # Skip the first 1 + 32 + 32 bytes (discriminator + update auth + mint)
                 offset = 1 + 32 + 32
                 
+                # Read name length and name
                 name_length = int.from_bytes(decoded_data[offset:offset + 4], byteorder='little')
                 offset += 4
                 name = decoded_data[offset:offset + name_length].decode('utf-8').rstrip('\x00')
                 offset += name_length
                 
+                # Read symbol length and symbol
                 symbol_length = int.from_bytes(decoded_data[offset:offset + 4], byteorder='little')
                 offset += 4
                 symbol = decoded_data[offset:offset + symbol_length].decode('utf-8').rstrip('\x00')
@@ -115,6 +122,7 @@ async def get_metadata(session: aiohttp.ClientSession, mint_address: str) -> Opt
                 continue
             logging.error(f"Error fetching metadata: {str(e)}")
             return None
+        
 
 @dataclass
 class Token2022Extensions:
@@ -134,15 +142,16 @@ class TokenDetails:
     security_review: str = "FAILED"  # Default to FAILED
 
     def to_dict(self) -> Dict:
+        # First create dict without security_review
         result = {
             'name': self.name,
             'symbol': self.symbol,
             'address': self.address,
             'owner_program': self.owner_program,
-            'freeze_authority': self.freeze_authority,
-            'security_review': self.security_review
+            'freeze_authority': self.freeze_authority
         }
         
+        # Add extensions if they exist
         if self.extensions:
             result.update({
                 'permanent_delegate': self.extensions.permanent_delegate,
@@ -150,6 +159,10 @@ class TokenDetails:
                 'transfer_hook': self.extensions.transfer_hook_authority,
                 'confidential_transfers': self.extensions.confidential_transfers_authority,
             })
+        
+        # Add security_review last
+        result['security_review'] = self.security_review
+        
         return result
 
 @lru_cache(maxsize=100)
@@ -161,8 +174,9 @@ async def get_token_details_async(token_address: str, session: aiohttp.ClientSes
     """Async version of get_token_details with more conservative retry logic"""
     for retry in range(MAX_RETRIES):
         try:
+            # Add delay before each request, even the first one
             if retry > 0:
-                wait_time = RETRY_DELAY * (2 ** retry)
+                wait_time = RETRY_DELAY * (2 ** retry)  # Exponential backoff
                 logging.warning(f"Waiting {wait_time} seconds before retry {retry+1}...")
                 await sleep(wait_time)
             
@@ -196,6 +210,7 @@ async def get_token_details_async(token_address: str, session: aiohttp.ClientSes
 
                 token_details, owner_program = process_token_data(result["value"], token_address)
 
+                # If it's a standard SPL token and name/symbol are N/A, try to get metadata
                 if (owner_program == TOKEN_PROGRAM and 
                     (token_details.name == 'N/A' or token_details.symbol == 'N/A')):
                     metadata = await get_metadata(session, token_address)
@@ -232,13 +247,15 @@ def process_token_data(account_data: Dict, token_address: str) -> Tuple[TokenDet
         freeze_authority=freeze_authority,
         extensions=None
     )
-
+    # Set security review based on token program type
     if owner_program == TOKEN_PROGRAM:
+        # For standard SPL tokens, PASSED if no freeze authority
         base_details.security_review = "PASSED" if freeze_authority is None else "FAILED"
     elif owner_program == TOKEN_2022_PROGRAM:
         base_details = process_token_2022_extensions(base_details, info)
+        # Security review will be set in process_token_2022_extensions
     else:
-        base_details.security_review = "FAILED"
+        base_details.security_review = "FAILED"  # Unknown token program
 
     return base_details, owner_program
 
@@ -265,6 +282,7 @@ def process_token_2022_extensions(token_details: TokenDetails, info: Dict) -> To
 
     token_details.extensions = extensions
 
+    # Set security review for Token 2022
     has_security_features = any([
         token_details.freeze_authority is not None,
         extensions.permanent_delegate is not None,
@@ -300,3 +318,46 @@ async def process_tokens_concurrently(token_addresses: List[str], session: aioht
     return await asyncio.gather(
         *(process_single_token(addr, idx) for idx, addr in enumerate(token_addresses))
     )
+
+async def main():
+    try:
+        import sys
+        if len(sys.argv) > 1:
+            input_file = sys.argv[1]
+            output_prefix = sys.argv[2] if len(sys.argv) > 2 else "spl_token_details"
+            with open(input_file, 'r') as f:
+                token_addresses = [line.strip() for line in f if line.strip()]
+        else:
+            token_address = input("Enter Solana token address: ").strip()
+            token_addresses = [token_address]
+            output_prefix = "single_token"
+        
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        json_output = f"{output_prefix}_{timestamp}.json"
+        log_output = f"{output_prefix}_{timestamp}.log"
+        
+        # Configure logging
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(levelname)s - %(message)s',
+            handlers=[
+                logging.FileHandler(log_output),
+                logging.StreamHandler()
+            ]
+        )
+        
+        async with aiohttp.ClientSession(timeout=SESSION_TIMEOUT) as session:
+            results = await process_tokens_concurrently(token_addresses, session)
+            
+            # Write outputs
+            with open(json_output, 'w') as f:
+                json.dump(results, f, indent=2)
+            
+            logging.info(f"Analysis complete. Check {json_output} for results.")
+            
+    except Exception as e:
+        logging.error(f"An error occurred: {str(e)}")
+        raise
+
+if __name__ == "__main__":
+    asyncio.run(main())
