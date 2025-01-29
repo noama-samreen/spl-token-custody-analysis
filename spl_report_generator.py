@@ -1,4 +1,5 @@
 import os
+import json
 from datetime import datetime
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
@@ -86,6 +87,18 @@ def create_pdf(token_data, output_dir):
     elements.append(create_basic_table(data, cell_style))
     elements.append(Spacer(1, 30))
     
+    # Context text
+    context_text = """<b>Solana SPL Token Review Context:</b> Solana tokens do not possess customizable code per 
+asset. Rather, a single "program" generates boiler template tokens with distinct states for each 
+newly created token. Therefore, examining the base program configurations is adequate for 
+reviewing all other tokens associated with it. The 'Token Program' adheres to standard 
+practices, undergoing thorough review and auditing procedures. Therefore, within this review 
+process, the focus remains on validating token configurations specific to tokens managed by the 
+trusted Token Program"""
+    
+    elements.append(Paragraph(context_text, context_style))
+    elements.append(Spacer(1, 20))
+    
     # Add security review result
     recommendation = (
         f"<b>{token_data['name']} ({token_data['symbol']}) "
@@ -94,6 +107,38 @@ def create_pdf(token_data, output_dir):
     elements.append(Paragraph(recommendation, context_style))
     elements.append(Spacer(1, 20))
     
+    # Additional details table
+    additional_data = [["Field", "Value"]]
+    
+    # Add all fields except those already shown in basic info
+    skip_fields = {'name', 'symbol', 'address', 'owner_program'}
+    for key, value in token_data.items():
+        if key not in skip_fields:
+            if isinstance(value, dict):
+                # Handle nested dictionary values
+                value = json.dumps(value, indent=2)
+            additional_data.append([
+                Paragraph(str(key), cell_style),
+                Paragraph(str(value), cell_style)
+            ])
+    
+    elements.append(create_additional_table(additional_data, cell_style))
+    
     # Build PDF
     doc.build(elements)
-    return filepath 
+    return filepath
+
+def create_additional_table(data, cell_style):
+    """Create and style the additional fields table"""
+    table = Table(data, colWidths=[2*inch, 4*inch])
+    table.setStyle(TableStyle([
+        ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+        ('FONTNAME', (0,0), (-1,-1), 'Helvetica'),
+        ('FONTSIZE', (0,0), (-1,-1), 10),
+        ('GRID', (0,0), (-1,-1), 1, colors.black),
+        ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),  # Header row background
+        ('TEXTCOLOR', (0,0), (-1,-1), colors.black),
+        ('PADDING', (0,0), (-1,-1), 6),
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+    ]))
+    return table
