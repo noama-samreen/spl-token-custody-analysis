@@ -192,14 +192,17 @@ async def get_token_creator(session: aiohttp.ClientSession, token_address: str) 
         
         async with session.post(SOLANA_RPC_URL, json=payload) as response:
             if response.status != 200:
+                logging.error(f"Failed to get signatures: {response.status}")
                 return None
                 
             data = await response.json()
             if "result" not in data or not data["result"]:
+                logging.error("No signatures found")
                 return None
                 
             # Get the oldest transaction signature
             oldest_tx = data["result"][-1]["signature"]
+            logging.info(f"Found creation transaction: {oldest_tx}")
             
             # Get transaction details
             tx_payload = {
@@ -214,10 +217,12 @@ async def get_token_creator(session: aiohttp.ClientSession, token_address: str) 
             
             async with session.post(SOLANA_RPC_URL, json=tx_payload) as tx_response:
                 if tx_response.status != 200:
+                    logging.error(f"Failed to get transaction: {tx_response.status}")
                     return None
                     
                 tx_data = await tx_response.json()
                 if "result" not in tx_data or not tx_data["result"]:
+                    logging.error("No transaction data found")
                     return None
                 
                 # Check if Pump.fun program was involved in the transaction
@@ -230,28 +235,33 @@ async def get_token_creator(session: aiohttp.ClientSession, token_address: str) 
                 for i, account in enumerate(account_keys):
                     if account["pubkey"] == PUMP_FUN_PROGRAM:
                         pump_fun_index = i
+                        logging.info(f"Found Pump.fun program at index {i}")
                         break
+                
+                if pump_fun_index is None:
+                    logging.info("Pump.fun program not found in account keys")
+                    return None
+
+                # Log the full transaction data for debugging
+                logging.info(f"Transaction data: {json.dumps(tx_data['result'], indent=2)}")
                 
                 if pump_fun_index is not None:
                     # Check main instructions
                     for instruction in instructions:
                         if instruction.get("programId") == pump_fun_index:
+                            logging.info("Found Pump.fun in main instructions")
                             return PUMP_FUN_PROGRAM
-                        
-                        # Check inner instructions if they exist
-                        inner_instructions = instruction.get("innerInstructions", [])
-                        for inner_instruction in inner_instructions:
-                            if inner_instruction.get("programId") == pump_fun_index:
-                                return PUMP_FUN_PROGRAM
+                    
+                    # Check meta.innerInstructions if present
+                    if "meta" in tx_data["result"]:
+                        inner_instructions = tx_data["result"]["meta"].get("innerInstructions", [])
+                        for inner_instruction_group in inner_instructions:
+                            for inner_instruction in inner_instruction_group.get("instructions", []):
+                                if inner_instruction.get("programId") == pump_fun_index:
+                                    logging.info("Found Pump.fun in inner instructions")
+                                    return PUMP_FUN_PROGRAM
                 
-                # Also check meta.innerInstructions if present
-                if "meta" in tx_data["result"]:
-                    inner_instructions = tx_data["result"]["meta"].get("innerInstructions", [])
-                    for inner_instruction_group in inner_instructions:
-                        for inner_instruction in inner_instruction_group.get("instructions", []):
-                            if inner_instruction.get("programId") == pump_fun_index:
-                                return PUMP_FUN_PROGRAM
-                
+                logging.info("Pump.fun program not found in any instructions")
                 return None
                 
     except Exception as e:
