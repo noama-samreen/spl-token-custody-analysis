@@ -225,7 +225,7 @@ async def get_token_creator(session: aiohttp.ClientSession, token_address: str) 
                 account_keys = transaction["message"]["accountKeys"]
                 instructions = transaction["message"]["instructions"]
                 
-                # Check if Pump.fun program is in the account keys and used in any instruction
+                # Find Pump.fun program index in account keys
                 pump_fun_index = None
                 for i, account in enumerate(account_keys):
                     if account["pubkey"] == PUMP_FUN_PROGRAM:
@@ -233,10 +233,24 @@ async def get_token_creator(session: aiohttp.ClientSession, token_address: str) 
                         break
                 
                 if pump_fun_index is not None:
-                    # Check if any instruction uses the Pump.fun program
+                    # Check main instructions
                     for instruction in instructions:
                         if instruction.get("programId") == pump_fun_index:
                             return PUMP_FUN_PROGRAM
+                        
+                        # Check inner instructions if they exist
+                        inner_instructions = instruction.get("innerInstructions", [])
+                        for inner_instruction in inner_instructions:
+                            if inner_instruction.get("programId") == pump_fun_index:
+                                return PUMP_FUN_PROGRAM
+                
+                # Also check meta.innerInstructions if present
+                if "meta" in tx_data["result"]:
+                    inner_instructions = tx_data["result"]["meta"].get("innerInstructions", [])
+                    for inner_instruction_group in inner_instructions:
+                        for inner_instruction in inner_instruction_group.get("instructions", []):
+                            if inner_instruction.get("programId") == pump_fun_index:
+                                return PUMP_FUN_PROGRAM
                 
                 return None
                 
