@@ -214,6 +214,6 @@ st.markdown("---")
 st.markdown("""
 <div style='text-align: center; color: #666;'>
     Noama Samreen | 
-    <a href='https://github.com/yourusername/solana-token-analyzer' target='_blank'>GitHub</a>
+    <a href='https://github.com/noama-samreen/spl-token-custody-analysis/' target='_blank'>GitHub</a>
 </div>
 """, unsafe_allow_html=True) 
