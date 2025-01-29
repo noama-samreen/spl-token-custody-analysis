@@ -3,6 +3,9 @@ import asyncio
 import aiohttp
 import json
 from spl_token_analysis import get_token_details_async, process_tokens_concurrently
+from spl_report_generator import create_pdf
+import tempfile
+import os
 
 # Page config
 st.set_page_config(
@@ -80,21 +83,39 @@ with tab1:
                     if isinstance(result, str):  # Error message
                         st.error(result)
                     else:
-                        # Convert TokenDetails to dictionary before displaying/downloading
-                        result_dict = result.to_dict()  # Use the to_dict() method we defined
+                        # Convert TokenDetails to dictionary
+                        result_dict = result.to_dict()
                         
-                        # Display results in a nice format
+                        # Display results
                         st.markdown("<div class='output-container'>", unsafe_allow_html=True)
                         st.json(result_dict)
                         
-                        # Add download button for single result
-                        st.download_button(
-                            "Download Result (JSON)",
-                            data=json.dumps(result_dict, indent=2),
-                            file_name=f"token_analysis_{token_address}.json",
-                            mime="application/json",
-                            key="single_download"
-                        )
+                        # Create columns for download buttons
+                        col1, col2, col3 = st.columns(3)
+                        
+                        with col1:
+                            st.download_button(
+                                "Download JSON",
+                                data=json.dumps(result_dict, indent=2),
+                                file_name=f"token_analysis_{token_address}.json",
+                                mime="application/json",
+                                key="single_download_json"
+                            )
+                        
+                        with col2:
+                            # Generate PDF
+                            with tempfile.TemporaryDirectory() as temp_dir:
+                                pdf_path = create_pdf(result_dict, temp_dir)
+                                with open(pdf_path, "rb") as pdf_file:
+                                    pdf_bytes = pdf_file.read()
+                                    st.download_button(
+                                        "Download PDF",
+                                        data=pdf_bytes,
+                                        file_name=f"token_analysis_{token_address}.pdf",
+                                        mime="application/pdf",
+                                        key="single_download_pdf"
+                                    )
+                        
                         st.markdown("</div>", unsafe_allow_html=True)
                 except Exception as e:
                     st.error(f"Error: {str(e)}")
@@ -110,7 +131,6 @@ with tab2:
     )
     
     if uploaded_file:
-        # Read and display preview of addresses
         addresses = [line.decode().strip() for line in uploaded_file if line.decode().strip()]
         st.info(f"Found {len(addresses)} addresses in file")
         
@@ -121,40 +141,36 @@ with tab2:
                     st.write("...")
         
         if st.button("Process Batch", key="batch_process"):
-            # Initialize progress tracking
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-            results_container = st.empty()
-            
-            async def process_batch():
-                async with aiohttp.ClientSession() as session:
-                    results = await process_tokens_concurrently(addresses, session)
-                    return results
-            
             try:
                 with st.spinner("Processing batch..."):
+                    async def process_batch():
+                        async with aiohttp.ClientSession() as session:
+                            return await process_tokens_concurrently(addresses, session)
+                    
                     results = asyncio.run(process_batch())
                     
                     # Display summary
                     success_count = sum(1 for r in results if r.get('status') == 'success')
                     st.success(f"Batch processing complete! Successfully processed {success_count}/{len(addresses)} tokens")
                     
-                    # Display results in expandable section
+                    # Display results
                     with st.expander("View Results", expanded=True):
                         st.json(results)
                     
-                    # Add download buttons for different formats
-                    col1, col2 = st.columns(2)
+                    # Download buttons in columns
+                    col1, col2, col3 = st.columns(3)
+                    
                     with col1:
                         st.download_button(
-                            "Download Results (JSON)",
+                            "Download JSON",
                             data=json.dumps(results, indent=2),
                             file_name="token_analysis_results.json",
                             mime="application/json",
                             key="batch_download_json"
                         )
+                    
                     with col2:
-                        # Create CSV format
+                        # Create CSV
                         csv_data = "address,name,symbol,owner_program,security_review\n"
                         for r in results:
                             if r['status'] == 'success':
@@ -162,12 +178,34 @@ with tab2:
                                 csv_data += f"{r.get('owner_program', 'N/A')},{r.get('security_review', 'N/A')}\n"
                         
                         st.download_button(
-                            "Download Results (CSV)",
+                            "Download CSV",
                             data=csv_data,
                             file_name="token_analysis_results.csv",
                             mime="text/csv",
                             key="batch_download_csv"
                         )
+                    
+                    with col3:
+                        # Generate PDFs for batch
+                        with tempfile.TemporaryDirectory() as temp_dir:
+                            # Create a zip file containing all PDFs
+                            import zipfile
+                            zip_path = os.path.join(temp_dir, "token_analysis_pdfs.zip")
+                            with zipfile.ZipFile(zip_path, 'w') as zipf:
+                                for result in results:
+                                    if result['status'] == 'success':
+                                        pdf_path = create_pdf(result, temp_dir)
+                                        zipf.write(pdf_path, os.path.basename(pdf_path))
+                            
+                            # Offer zip file for download
+                            with open(zip_path, "rb") as zip_file:
+                                st.download_button(
+                                    "Download PDFs",
+                                    data=zip_file,
+                                    file_name="token_analysis_pdfs.zip",
+                                    mime="application/zip",
+                                    key="batch_download_pdfs"
+                                )
             except Exception as e:
                 st.error(f"Error during batch processing: {str(e)}")
 
@@ -175,7 +213,7 @@ with tab2:
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center; color: #666;'>
-    Noama Samreen | 
+    Made with ❤️ by noamasamreen | 
     <a href='https://github.com/yourusername/solana-token-analyzer' target='_blank'>GitHub</a>
 </div>
 """, unsafe_allow_html=True) 
