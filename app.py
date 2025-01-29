@@ -6,7 +6,7 @@ from spl_token_analysis import get_token_details_async, process_tokens_concurren
 
 # Page config
 st.set_page_config(
-    page_title="Solana Token Custody Risk Analyzer",
+    page_title="Solana Token Analyzer",
     page_icon="🔍",
     layout="wide"
 )
@@ -80,14 +80,17 @@ with tab1:
                     if isinstance(result, str):  # Error message
                         st.error(result)
                     else:
+                        # Convert TokenDetails to dictionary before displaying/downloading
+                        result_dict = result.to_dict()  # Use the to_dict() method we defined
+                        
                         # Display results in a nice format
                         st.markdown("<div class='output-container'>", unsafe_allow_html=True)
-                        st.json(result)
+                        st.json(result_dict)
                         
                         # Add download button for single result
                         st.download_button(
                             "Download Result (JSON)",
-                            data=json.dumps(result, indent=2),
+                            data=json.dumps(result_dict, indent=2),
                             file_name=f"token_analysis_{token_address}.json",
                             mime="application/json",
                             key="single_download"
@@ -172,7 +175,7 @@ with tab2:
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center; color: #666;'>
-    Author: noamasamreen | 
-    <a href='https://github.com/noama-samreen/solana-token-analyzer' target='_blank'>GitHub</a>
+    Noama Samreen | 
+    <a href='https://github.com/yourusername/solana-token-analyzer' target='_blank'>GitHub</a>
 </div>
 """, unsafe_allow_html=True) 
