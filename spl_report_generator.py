@@ -195,7 +195,9 @@ trusted Token Program"""
         # Special handling for owner program to show address and name
         if field == 'owner_program' and value != 'None':
             program_name = PROGRAM_NAMES.get(value, "Unknown Program")
-            value = f"{value} ({program_name})"
+            # Only show the program name in parentheses if we recognize the program
+            if program_name != "Unknown Program":
+                value = f"{value} ({program_name})"
             
         if isinstance(value, dict):
             value = json.dumps(value, indent=2)
