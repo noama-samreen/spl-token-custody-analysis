@@ -6,7 +6,7 @@ from spl_token_analysis import get_token_details_async, process_tokens_concurren
 
 # Page config
 st.set_page_config(
-    page_title="Solana Token Analyzer",
+    page_title="Solana Token Custody Risk Analyzer",
     page_icon="🔍",
     layout="wide"
 )
