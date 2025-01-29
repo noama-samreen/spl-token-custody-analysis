@@ -90,7 +90,18 @@ def create_additional_table(data, cell_style):
 
 def create_pdf(token_data, output_dir):
     """Generate PDF for a single token"""
-    filename = f"{token_data['name']} ({token_data['symbol']}) Security Memo.pdf"
+    # Handle missing or invalid name/symbol
+    token_name = token_data.get('name', 'Unknown')
+    if token_name in ['N/A', None, '']:
+        token_name = 'Unknown'
+    
+    token_symbol = token_data.get('symbol', 'UNKNOWN')
+    if token_symbol in ['N/A', None, '']:
+        token_symbol = 'UNKNOWN'
+    
+    filename = f"{token_name} ({token_symbol}) Security Memo.pdf"
+    # Sanitize filename to remove invalid characters
+    filename = "".join(c for c in filename if c.isalnum() or c in (' ', '-', '_', '(', ')', '.'))
     filepath = os.path.join(output_dir, filename)
     
     doc = SimpleDocTemplate(
@@ -105,28 +116,36 @@ def create_pdf(token_data, output_dir):
     styles, title_style, cell_style, context_style, header_style = create_styles()
     elements = []
     
-    # Title with better spacing
+    # Title with better spacing and error handling
     title = Paragraph(
-        f"Solana Token Security Assessment:<br/>{token_data['name']} ({token_data['symbol']})", 
+        f"Solana Token Security Assessment:<br/>{token_name} ({token_symbol})", 
         title_style
     )
     elements.append(title)
     elements.append(Spacer(1, 30))
     
-    # Basic information table
+    # Basic information table with error handling
     current_date = datetime.now().strftime("%Y-%m-%d")
+    owner_program = token_data.get('owner_program', 'Unknown')
+    if owner_program in ['N/A', None, '']:
+        owner_program = 'Unknown'
+    
+    address = token_data.get('address', 'Unknown')
+    if address in ['N/A', None, '']:
+        address = 'Unknown'
+    
     data = [
         [Paragraph("Reviewer", header_style), Paragraph("noamasamreen", cell_style)],
-        [Paragraph("Profile", header_style), Paragraph(token_data['owner_program'], cell_style)],
+        [Paragraph("Profile", header_style), Paragraph(owner_program, cell_style)],
         [Paragraph("Review Date", header_style), Paragraph(current_date, cell_style)],
         [Paragraph("Network", header_style), Paragraph("Solana", cell_style)],
-        [Paragraph("Address", header_style), Paragraph(token_data['address'], cell_style)]
+        [Paragraph("Address", header_style), Paragraph(address, cell_style)]
     ]
     
     elements.append(create_basic_table(data, cell_style))
     elements.append(Spacer(1, 30))
     
-    # Context text with better formatting
+    # Context text
     context_text = """<b>Solana SPL Token Review Context:</b> Solana tokens do not possess customizable code per 
 asset. Rather, a single "program" generates boiler template tokens with distinct states for each 
 newly created token. Therefore, examining the base program configurations is adequate for 
@@ -138,23 +157,26 @@ trusted Token Program"""
     elements.append(Paragraph(context_text, context_style))
     elements.append(Spacer(1, 25))
     
-    # Recommendation with emphasis
+    # Recommendation with error handling
+    security_review = token_data.get('security_review', 'UNKNOWN')
+    if security_review in ['N/A', None, '']:
+        security_review = 'UNKNOWN'
+    
     recommendation = (
-        f"<b>{token_data['name']} ({token_data['symbol']}) "
-        f"{'is' if token_data['security_review'] == 'PASSED' else 'is not'} recommended for listing.</b>"
+        f"<b>{token_name} ({token_symbol}) "
+        f"{'is' if security_review == 'PASSED' else 'is not'} recommended for listing.</b>"
     )
     elements.append(Paragraph(recommendation, ParagraphStyle(
         'CustomRecommendation',
         parent=context_style,
         fontSize=12,
-        textColor=colors.HexColor('#006400') if token_data['security_review'] == 'PASSED' else colors.red
+        textColor=colors.HexColor('#006400') if security_review == 'PASSED' else colors.red
     )))
     elements.append(Spacer(1, 25))
     
-    # Additional details table
+    # Additional details table with error handling
     additional_data = [["Field", "Value"]]
     
-    # Define the order of fields (security_review will be added last)
     field_order = [
         'freeze_authority',
         'permanent_delegate',
@@ -163,29 +185,31 @@ trusted Token Program"""
         'confidential_transfers'
     ]
     
-    # Add fields in specified order
+    # Add fields in specified order with error handling
     for field in field_order:
-        if field in token_data:
-            value = token_data[field]
-            if isinstance(value, dict):
-                value = json.dumps(value, indent=2)
-            additional_data.append([
-                Paragraph(str(field).replace('_', ' ').title(), cell_style),
-                Paragraph(str(value), cell_style)
-            ])
+        value = token_data.get(field, 'None')
+        if value in ['N/A', None, '']:
+            value = 'None'
+        if isinstance(value, dict):
+            value = json.dumps(value, indent=2)
+        additional_data.append([
+            Paragraph(str(field).replace('_', ' ').title(), cell_style),
+            Paragraph(str(value), cell_style)
+        ])
     
-    # Add security review as the last row with emphasis
-    security_value = token_data.get('security_review', 'N/A')
+    # Add security review as the last row
     security_style = ParagraphStyle(
         'SecurityCell',
         parent=cell_style,
-        textColor=colors.HexColor('#006400') if security_value == 'PASSED' else colors.red,
+        textColor=colors.HexColor('#006400') if security_review == 'PASSED' 
+                 else colors.red if security_review == 'FAILED'
+                 else colors.black,
         fontName='Helvetica-Bold'
     )
     
     additional_data.append([
         Paragraph("Security Review", cell_style),
-        Paragraph(security_value, security_style)
+        Paragraph(security_review, security_style)
     ])
     
     elements.append(create_additional_table(additional_data, cell_style))
