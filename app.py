@@ -57,7 +57,7 @@ st.markdown("""
 # Header
 st.markdown("<div class='header-container'>", unsafe_allow_html=True)
 st.title("🔍 Solana Token Custody Risk Analyzer")
-st.markdown("Analyze token details from the Solana blockchain, including Token-2022 program support")
+st.markdown("Analyze token details from the Solana blockchain for custody under both the Standard Token Program and the Token-2022 Program types")
 st.markdown("</div>", unsafe_allow_html=True)
 
 # Create tabs
