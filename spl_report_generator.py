@@ -55,18 +55,18 @@ def create_styles():
     return styles, title_style, cell_style, context_style, header_style
 
 def create_basic_table(data, cell_style):
-    table = Table(data, colWidths=[2.5*inch, 3.5*inch])
+    """Create and style the basic information table"""
+    # Reduced table width (adjusted from 6 inches to 5 inches total)
+    table = Table(data, colWidths=[1.2*inch, 3.8*inch])
     table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, -1), colors.white),
-        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),  # Bold headers in first column
-        ('FONTNAME', (1, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
-        ('TOPPADDING', (0, 0), (-1, -1), 12),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE')
+        ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+        ('FONTNAME', (0,0), (-1,-1), 'Helvetica'),
+        ('FONTSIZE', (0,0), (-1,-1), 10),
+        ('GRID', (0,0), (-1,-1), 1, colors.black),
+        ('BACKGROUND', (0,0), (0,-1), colors.lightgrey),
+        ('TEXTCOLOR', (0,0), (-1,-1), colors.black),
+        ('PADDING', (0,0), (-1,-1), 6),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),  # Changed to MIDDLE for better alignment
     ]))
     return table
 
@@ -124,22 +124,16 @@ def create_pdf(token_data, output_dir):
     elements.append(title)
     elements.append(Spacer(1, 30))
     
-    # Basic information table with error handling
+    # Basic information table with wrapped text
     current_date = datetime.now().strftime("%Y-%m-%d")
-    owner_program = token_data.get('owner_program', 'Unknown')
-    if owner_program in ['N/A', None, '']:
-        owner_program = 'Unknown'
-    
-    address = token_data.get('address', 'Unknown')
-    if address in ['N/A', None, '']:
-        address = 'Unknown'
+    profile = "SPL Token 2022 Standard" if "Token 2022" in token_data['owner_program'] else "SPL Token Standard"
     
     data = [
-        [Paragraph("Reviewer", header_style), Paragraph("noamasamreen", cell_style)],
-        [Paragraph("Profile", header_style), Paragraph(owner_program, cell_style)],
-        [Paragraph("Review Date", header_style), Paragraph(current_date, cell_style)],
-        [Paragraph("Network", header_style), Paragraph("Solana", cell_style)],
-        [Paragraph("Address", header_style), Paragraph(address, cell_style)]
+        [Paragraph("Reviewer", cell_style), Paragraph("Noama Samreen", cell_style)],  # Fixed name format
+        [Paragraph("Profile", cell_style), Paragraph(profile, cell_style)],
+        [Paragraph("Review Date", cell_style), Paragraph(current_date, cell_style)],
+        [Paragraph("Network", cell_style), Paragraph("Solana", cell_style)],  # Changed SPL to Solana
+        [Paragraph("Address", cell_style), Paragraph(token_data['address'], cell_style)]
     ]
     
     elements.append(create_basic_table(data, cell_style))
