@@ -132,6 +132,27 @@ st.markdown("""
     font-size: 0.85rem !important;
     line-height: 1.4;
 }
+
+/* Smooth transition for updates */
+[data-testid="stCode"] {
+    transition: all 0.3s ease;
+}
+
+/* Make the log container more terminal-like */
+[data-testid="stCode"] {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 13px;
+    line-height: 1.4;
+    padding: 12px;
+    background-color: #f8f9fa;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    color: #333;
+    margin: 8px 0;
+    white-space: pre-wrap;
+    overflow-y: auto;
+    max-height: 200px;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -140,7 +161,7 @@ log_placeholder = st.empty()
 
 # Header
 st.title("🔍 Solana Token Security Analyzer")
-st.markdown("Analyze details of SPL tokens and Token-2022 assets on the Solana blockchain, including tokens from pump.fun")
+st.markdown("Analyze details of SPL tokens and Token-2022 assets on the Solana blockchain, including tokens from pump.fun.")
 
 # Create tabs
 tab1, tab2 = st.tabs(["Single Token", "Batch Process"])
