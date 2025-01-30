@@ -17,9 +17,10 @@ SOLANA_RPC_URL = "https://api.mainnet-beta.solana.com"
 TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
 TOKEN_2022_PROGRAM = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
 METADATA_PROGRAM_ID = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
-MAX_RETRIES = 3
+MAX_RETRIES = 4
 BASE_DELAY = 2.0  # 2 second between requests
 RETRY_DELAY = 2.0  # Additional delay when rate limited
+BATCH_SIZE = 1000  # Maximum allowed by Solana
 
 # Original constants
 CONCURRENT_LIMIT = 1  # Back to original value
@@ -139,7 +140,10 @@ class TokenDetails:
     owner_program: str
     freeze_authority: Optional[str]
     extensions: Optional[Token2022Extensions] = None
+    first_transaction: Optional[str] = None
+    is_genuine_pump_fun_token: bool = False
     security_review: str = "FAILED"  # Default to FAILED
+    transaction_count: int = 0
 
     def to_dict(self) -> Dict:
         # First create dict without security_review
@@ -148,7 +152,8 @@ class TokenDetails:
             'symbol': self.symbol,
             'address': self.address,
             'owner_program': self.owner_program,
-            'freeze_authority': self.freeze_authority
+            'freeze_authority': self.freeze_authority,
+            'transaction_count': self.transaction_count
         }
         
         # Add extensions if they exist
@@ -160,7 +165,10 @@ class TokenDetails:
                 'confidential_transfers': self.extensions.confidential_transfers_authority,
             })
         
-        # Add security_review last
+        # Add first transaction and pump verification
+        if self.first_transaction:
+            result['first_transaction'] = self.first_transaction
+        result['is_genuine_pump_fun_token'] = self.is_genuine_pump_fun_token
         result['security_review'] = self.security_review
         
         return result
@@ -170,15 +178,149 @@ def get_owner_program_label(owner_address: str) -> str:
     """Cached helper function to get the label for owner program"""
     return OWNER_LABELS.get(owner_address, "Unknown Owner")
 
+async def get_signatures_batch(session: aiohttp.ClientSession, address: str, before: str = None) -> list:
+    """Get a batch of signatures with retries"""
+    #logging.info(f"Fetching signatures for {address}")
+    params = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "getSignaturesForAddress",
+        "params": [
+            address,
+            {
+                "before": before,
+                "limit": BATCH_SIZE,
+                "commitment": "confirmed"
+            }
+        ]
+    }
+    
+    retry_count = 0
+    while True:
+        try:
+            async with session.post(SOLANA_RPC_URL, json=params) as response:
+                #logging.info(f"Response status: {response.status}")
+                data = await response.json()
+                if "error" in data:
+                    if data["error"].get("code") == 429:
+                        retry_count += 1
+                        wait_time = min(2 * (1.5 ** retry_count), 10)  # Exponential backoff up to 10 seconds
+                        logging.info(f"Rate limited. Waiting {wait_time} seconds...")
+                        await sleep(wait_time)
+                        continue
+                    return []
+                signatures = data.get('result', [])
+                logging.info(f"Got {len(signatures)} signatures")
+                return signatures
+        except Exception as e:
+            logging.error(f"Error in get_signatures_batch: {str(e)}")
+            retry_count += 1
+            wait_time = min(2 * (1.5 ** retry_count), 10)
+            await sleep(wait_time)
+            continue
+
+async def verify_pump_token(session: aiohttp.ClientSession, token_address: str) -> Tuple[bool, Optional[str], int]:
+    """Verify if token is a genuine pump.fun token by checking its first transaction"""
+    PUMP_PROGRAM = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"
+    
+    logging.info(f"Starting pump token verification for {token_address}")
+    
+    if not token_address.lower().endswith('pump'):
+        logging.info("Not a pump token (doesn't end with 'pump')")
+        return False, None, 0
+
+    try:
+        total_signatures = []
+        before = None
+        found_first = False
+        first_tx_sig = None
+        retry_count = 0
+        
+        while not found_first:
+            signatures = await get_signatures_batch(session, token_address, before)
+            
+            if not signatures:
+                logging.info("No signatures found in batch")
+                break
+                
+            total_signatures.extend(signatures)
+            logging.info(f"Total signatures collected: {len(total_signatures)}")
+            
+            if len(signatures) < BATCH_SIZE:
+                found_first = True
+                first_tx_sig = signatures[-1]['signature']
+                logging.info(f"Found first transaction: {first_tx_sig}")
+                
+                # Get transaction details
+                tx_params = {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "getTransaction",
+                    "params": [
+                        first_tx_sig,
+                        {
+                            "encoding": "jsonParsed",
+                            "maxSupportedTransactionVersion": 0
+                        }
+                    ]
+                }
+                
+                logging.info("Fetching transaction details")
+                while True:
+                    try:
+                        async with session.post(SOLANA_RPC_URL, json=tx_params) as tx_response:
+                            if tx_response.status == 429:
+                                retry_count += 1
+                                wait_time = min(2 * (1.5 ** retry_count), 10)
+                                logging.info(f"Rate limited in tx fetch. Waiting {wait_time} seconds...")
+                                await sleep(wait_time)
+                                continue
+                                
+                            tx_data = await tx_response.json()
+                            if "error" in tx_data:
+                                logging.error(f"Transaction fetch error: {tx_data['error']}")
+                                break
+                                
+                            if "result" in tx_data and tx_data["result"]:
+                                tx_result = tx_data["result"]
+                                inner_instructions = tx_result.get("meta", {}).get("innerInstructions", [])
+                                
+                                for inner_group in inner_instructions:
+                                    for instruction in inner_group.get("instructions", []):
+                                        if "parsed" in instruction:
+                                            parsed_type = instruction["parsed"].get("type")
+                                            if parsed_type == "createAccount":
+                                                owner = instruction["parsed"].get("info", {}).get("owner")
+                                                if owner == PUMP_PROGRAM:
+                                                    logging.info("Verified as genuine pump.fun token!")
+                                                    return True, first_tx_sig, len(total_signatures)
+                            break
+                    except Exception as e:
+                        retry_count += 1
+                        wait_time = min(2 * (1.5 ** retry_count), 10)
+                        await sleep(wait_time)
+                        continue
+                break
+            
+            before = signatures[-1]['signature']
+            await sleep(2)  # Base delay between signature batches
+        
+        logging.info("Completed verification - not a genuine pump.fun token")
+        return False, first_tx_sig, len(total_signatures)
+            
+    except Exception as e:
+        logging.error(f"Error in verify_pump_token: {str(e)}")
+        return False, None, 0
+
 async def get_token_details_async(token_address: str, session: aiohttp.ClientSession) -> Tuple[TokenDetails, Optional[str]]:
     """Async version of get_token_details with more conservative retry logic"""
     for retry in range(MAX_RETRIES):
         try:
-            # Add delay before each request, even the first one
-            if retry > 0:
-                wait_time = RETRY_DELAY * (2 ** retry)  # Exponential backoff
-                logging.warning(f"Waiting {wait_time} seconds before retry {retry+1}...")
-                await sleep(wait_time)
+            # First verify if it's a pump token
+            is_genuine_pump_fun_token, first_transaction, transaction_count = await verify_pump_token(session, token_address)
+            
+            # Add base delay before request
+            await sleep(BASE_DELAY)
             
             payload = {
                 "jsonrpc": "2.0",
@@ -191,32 +333,31 @@ async def get_token_details_async(token_address: str, session: aiohttp.ClientSes
             }
             
             async with session.post(SOLANA_RPC_URL, json=payload) as response:
-                if response.status == 429:
+                if response.status == 429:  # Rate limit hit
                     if retry < MAX_RETRIES - 1:
+                        wait_time = RETRY_DELAY * (2 ** retry)  # Exponential backoff
+                        logging.warning(f"Rate limit hit, waiting {wait_time} seconds...")
+                        await sleep(wait_time)
                         continue
-                    return f"Error: Rate limit exceeded after {MAX_RETRIES} retries", None
-                
-                if response.status != 200:
-                    return f"Error: RPC returned status code {response.status}", None
+                    return "Rate limit exceeded", None
                     
                 data = await response.json()
                 
                 if "error" in data:
-                    return f"Error: {data['error']['message']}", None
-
-                result = data.get("result", {})
-                if not result or not result.get("value"):
-                    return "Token not found or invalid address", None
-
-                token_details, owner_program = process_token_data(result["value"], token_address)
-
-                # If it's a standard SPL token and name/symbol are N/A, try to get metadata
-                if (owner_program == TOKEN_PROGRAM and 
-                    (token_details.name == 'N/A' or token_details.symbol == 'N/A')):
-                    metadata = await get_metadata(session, token_address)
-                    if metadata:
-                        token_details.name = metadata["name"]
-                        token_details.symbol = metadata["symbol"]
+                    return f"RPC error: {data['error']}", None
+                    
+                if "result" not in data or not data["result"]:
+                    return "No data returned", None
+                    
+                account_data = data["result"]["value"]
+                
+                # Process the token data
+                token_details, owner_program = process_token_data(account_data, token_address)
+                
+                # Update token_details with pump verification and transaction info
+                token_details.is_genuine_pump_fun_token = is_genuine_pump_fun_token
+                token_details.first_transaction = first_transaction
+                token_details.transaction_count = transaction_count
 
                 return token_details, owner_program
 
@@ -241,6 +382,7 @@ def process_token_data(account_data: Dict, token_address: str) -> Tuple[TokenDet
             address=token_address,
             owner_program="System Program",
             freeze_authority=None,
+            is_genuine_pump_fun_token=False,
             security_review="NOT_A_TOKEN"
         ), owner_program
 
@@ -252,6 +394,7 @@ def process_token_data(account_data: Dict, token_address: str) -> Tuple[TokenDet
             address=token_address,
             owner_program=f"{owner_program} (Not a token program)",
             freeze_authority=None,
+            is_genuine_pump_fun_token=False,
             security_review="NOT_A_TOKEN"
         ), owner_program
 
@@ -267,7 +410,8 @@ def process_token_data(account_data: Dict, token_address: str) -> Tuple[TokenDet
         address=token_address,
         owner_program=f"{owner_program} ({owner_label})",
         freeze_authority=freeze_authority,
-        extensions=None
+        extensions=None,
+        is_genuine_pump_fun_token=False
     )
     # Set security review based on token program type
     if owner_program == TOKEN_PROGRAM:
