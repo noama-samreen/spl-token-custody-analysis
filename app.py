@@ -158,7 +158,7 @@ with tab1:
         if "Pump.Fun Mint Authority" in str(result_dict.get('update_authority', '')):
             col1, col2 = st.columns(2)
             with col1:
-                st.metric("Genuine Pump Token", "Yes" if result_dict.get('is_genuine_pump_fun_token', False) else "No")
+                st.metric("Genuine Pump Fun Token", "Yes" if result_dict.get('is_genuine_pump_fun_token', False) else "No")
             with col2:
                 st.metric("Graduated to Raydium", "Yes" if result_dict.get('token_graduated_to_raydium', False) else "No")
             
