@@ -7,50 +7,16 @@ from spl_report_generator import create_pdf
 import tempfile
 import os
 import zipfile
-from datetime import datetime
-import time
 
-# Initialize session state
+# Initialize session state if not already done
 if 'analysis_results' not in st.session_state:
     st.session_state.analysis_results = None
 if 'batch_results' not in st.session_state:
     st.session_state.batch_results = None
-if 'logs' not in st.session_state:
-    st.session_state.logs = []
-if 'start_time' not in st.session_state:
-    st.session_state.start_time = None
-
-# Define helper functions first
-def start_timer():
-    """Start the execution timer"""
-    st.session_state.start_time = time.time()
-    st.session_state.logs = []  # Clear previous logs
-    add_log("Starting execution...")
-
-def get_elapsed_time():
-    """Get elapsed time since start"""
-    if st.session_state.start_time:
-        elapsed = time.time() - st.session_state.start_time
-        return f"{elapsed:.2f} seconds"
-    return "Not started"
-
-def add_log(message):
-    """Add a log message with timestamp"""
-    timestamp = datetime.now().strftime("%H:%M:%S")
-    elapsed = get_elapsed_time()
-    st.session_state.logs.append(f"[{timestamp}] ({elapsed}) {message}")
-
-def display_logs():
-    """Display all logs and total time in the placeholder"""
-    log_text = "\n".join(st.session_state.logs)
-    if st.session_state.start_time:
-        log_text += f"\n\n{'='*50}\nTotal execution time: {get_elapsed_time()}"
-    if 'log_placeholder' in globals():
-        log_placeholder.code(log_text, language=None)
 
 # Page config
 st.set_page_config(
-    page_title="Solana Token Security Analyzer",
+    page_title="Solana Token Custody Risk Analyzer",
     page_icon="🔍",
     layout="wide"
 )
@@ -132,36 +98,12 @@ st.markdown("""
     font-size: 0.85rem !important;
     line-height: 1.4;
 }
-
-/* Smooth transition for updates */
-[data-testid="stCode"] {
-    transition: all 0.3s ease;
-}
-
-/* Make the log container more terminal-like */
-[data-testid="stCode"] {
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 13px;
-    line-height: 1.4;
-    padding: 12px;
-    background-color: #f8f9fa;
-    border: 1px solid #eee;
-    border-radius: 4px;
-    color: #333;
-    margin: 8px 0;
-    white-space: pre-wrap;
-    overflow-y: auto;
-    max-height: 200px;
-}
 </style>
 """, unsafe_allow_html=True)
 
-# Create log placeholder at the top level
-log_placeholder = st.empty()
-
 # Header
-st.title("🔍 Solana Token Security Analyzer")
-st.markdown("Analyze details of SPL tokens and Token-2022 assets on the Solana blockchain, including tokens from pump.fun.")
+st.title("🔍 Solana Token Custody Risk Analyzer")
+st.markdown("Analyze token details from the Solana blockchain, including Token-2022 program support")
 
 # Create tabs
 tab1, tab2 = st.tabs(["Single Token", "Batch Process"])
@@ -178,35 +120,21 @@ with tab1:
             token_address = ""
             st.experimental_rerun()
     
-    # Place log display right after input section
-    log_placeholder = st.empty()
-    
     if analyze_button and token_address:
         with st.spinner("Analyzing token..."):
             async def get_token():
-                start_timer()
-                add_log(f"Starting analysis for token: {token_address[:8]}...")
-                add_log("Fetching token data from blockchain...")
                 async with aiohttp.ClientSession() as session:
                     details, _ = await get_token_details_async(token_address, session)
-                    add_log("Analyzing security parameters...")
-                    add_log("✅ Analysis complete!")
-                    display_logs()
                     return details
             
             try:
                 result = asyncio.run(get_token())
-                if isinstance(result, str):
+                if isinstance(result, str):  # Error message
                     st.error(result)
                 else:
                     st.session_state.analysis_results = result.to_dict()
             except Exception as e:
-                add_log(f"❌ Error: {str(e)}")
-                display_logs()
                 st.error(f"Error analyzing token: {str(e)}")
-
-    # Add some spacing between logs and results
-    st.markdown("<div style='margin: 1rem 0;'></div>", unsafe_allow_html=True)
     
     # Display results if they exist
     if st.session_state.analysis_results:
@@ -292,115 +220,86 @@ with tab2:
     with col2:
         if st.button("Start New Batch", key="reset_batch"):
             st.session_state.batch_results = None
-            st.session_state.logs = []
             uploaded_file = None
             st.experimental_rerun()
-    
-    # Add log display area right after upload
-    log_placeholder = st.empty()
-    results_placeholder = st.empty()
     
     if uploaded_file:
         addresses = [line.decode().strip() for line in uploaded_file if line.decode().strip()]
         st.info(f"Found {len(addresses)} addresses in file")
         
         if st.button("Process Batch", key="batch_process"):
-            # Clear previous results while processing
-            results_placeholder.empty()
+            progress_bar = st.progress(0)
+            status_text = st.empty()
             
             async def process_batch():
-                start_timer()
-                add_log(f"Starting batch processing for {len(addresses)} tokens...")
-                display_logs()
-                
-                results = []
                 async with aiohttp.ClientSession() as session:
-                    for i, address in enumerate(addresses, 1):
-                        add_log(f"Processing token {i}/{len(addresses)}: {address[:8]}...")
-                        display_logs()
-                        
-                        try:
-                            details, _ = await get_token_details_async(address, session)
-                            add_log(f"✅ Successfully processed token {i}: {address[:8]}")
-                            results.append({"status": "success", "address": address, **details.to_dict()})
-                        except Exception as e:
-                            add_log(f"❌ Failed to process token {i}: {address[:8]} - {str(e)}")
-                            results.append({"status": "error", "address": address, "error": str(e)})
-                        
-                        # Update progress
+                    results = await process_tokens_concurrently(addresses, session)
+                    for i, _ in enumerate(results, 1):
                         progress = i / len(addresses)
-                        progress_bar = "█" * int(progress * 40) + "░" * (40 - int(progress * 40))
-                        add_log(f"Progress: |{progress_bar}| {progress:.1%}")
-                        display_logs()
-                        
-                        # Small delay to show progress
-                        await asyncio.sleep(0.1)
-                
-                add_log("✨ Batch processing completed!")
-                display_logs()
-                return results
+                        progress_bar.progress(progress)
+                        status_text.text(f"Processed {i}/{len(addresses)} tokens")
+                    return results
             
             try:
                 results = asyncio.run(process_batch())
                 st.session_state.batch_results = results
-                
-                # Display final results in the placeholder
-                with results_placeholder:
-                    st.success(f"Successfully processed {len(results)} tokens")
-                    st.json(results)
-                    
-                    # Download buttons
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.download_button(
-                            "Download JSON",
-                            data=json.dumps(results, indent=2),
-                            file_name="token_analysis_results.json",
-                            mime="application/json"
-                        )
-                    with col2:
-                        # Create CSV with update authority
-                        csv_data = "address,name,symbol,owner_program,update_authority,freeze_authority,security_review\n"
-                        for r in results:
-                            if r['status'] == 'success':
-                                csv_data += f"{r['address']},{r.get('name', 'N/A')},{r.get('symbol', 'N/A')},"
-                                csv_data += f"{r.get('owner_program', 'N/A')},{r.get('update_authority', 'None')},"
-                                csv_data += f"{r.get('freeze_authority', 'None')},{r.get('security_review', 'N/A')}\n"
-                        
-                        st.download_button(
-                            "Download CSV",
-                            data=csv_data,
-                            file_name="token_analysis_results.csv",
-                            mime="text/csv"
-                        )
-                    with col3:
-                        with tempfile.TemporaryDirectory() as temp_dir:
-                            zip_path = os.path.join(temp_dir, "token_analysis_pdfs.zip")
-                            with zipfile.ZipFile(zip_path, 'w') as zipf:
-                                for result in results:
-                                    if result['status'] == 'success':
-                                        pdf_path = create_pdf(result, temp_dir)
-                                        zipf.write(pdf_path, os.path.basename(pdf_path))
-                            
-                            with open(zip_path, "rb") as zip_file:
-                                st.download_button(
-                                    "Download PDFs",
-                                    data=zip_file.read(),
-                                    file_name="token_analysis_pdfs.zip",
-                                    mime="application/zip"
-                                )
-
+                st.success(f"Successfully processed {len(results)} tokens")
             except Exception as e:
-                add_log(f"❌ Error during batch processing: {str(e)}")
-                display_logs()
                 st.error(f"Error during batch processing: {str(e)}")
 
-# Update the footer section
+    # Display batch results if they exist
+    if st.session_state.batch_results:
+        results = st.session_state.batch_results
+        st.json(results)
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.download_button(
+                "Download JSON",
+                data=json.dumps(results, indent=2),
+                file_name="token_analysis_results.json",
+                mime="application/json"
+            )
+        
+        with col2:
+            # Create CSV with update authority
+            csv_data = "address,name,symbol,owner_program,update_authority,freeze_authority,security_review\n"
+            for r in results:
+                if r['status'] == 'success':
+                    csv_data += f"{r['address']},{r.get('name', 'N/A')},{r.get('symbol', 'N/A')},"
+                    csv_data += f"{r.get('owner_program', 'N/A')},{r.get('update_authority', 'None')},"
+                    csv_data += f"{r.get('freeze_authority', 'None')},{r.get('security_review', 'N/A')}\n"
+            
+            st.download_button(
+                "Download CSV",
+                data=csv_data,
+                file_name="token_analysis_results.csv",
+                mime="text/csv"
+            )
+        
+        with col3:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                zip_path = os.path.join(temp_dir, "token_analysis_pdfs.zip")
+                with zipfile.ZipFile(zip_path, 'w') as zipf:
+                    for result in results:
+                        if result['status'] == 'success':
+                            pdf_path = create_pdf(result, temp_dir)
+                            zipf.write(pdf_path, os.path.basename(pdf_path))
+                
+                with open(zip_path, "rb") as zip_file:
+                    st.download_button(
+                        "Download PDFs",
+                        data=zip_file.read(),
+                        file_name="token_analysis_pdfs.zip",
+                        mime="application/zip"
+                    )
+
+# Footer
+st.markdown("---")
 st.markdown("""
-<footer>
-    <div style='color: #666;'>
-        Noama Samreen | 
-        <a href='https://github.com/noama-samreen/spl-token-custody-analysis' target='_blank' style='color: #7047EB; text-decoration: none;'>GitHub</a>
-    </div>
-</footer>
+<div style='text-align: center; color: #666;'>
+    Noama Samreen | 
+    <a href='https://github.com/noama-samreen/spl-token-custody-analysis' target='_blank'>GitHub</a>
+</div>
 """, unsafe_allow_html=True) 
