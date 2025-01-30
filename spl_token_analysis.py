@@ -161,15 +161,16 @@ class TokenDetails:
     address: str
     owner_program: str
     freeze_authority: Optional[str]
-    update_authority: Optional[str] = None  # Added update authority field
+    update_authority: Optional[str] = None
     extensions: Optional[Token2022Extensions] = None
-    first_transaction: Optional[str] = None
-    transaction_count: Optional[int] = None
     is_genuine_pump_fun_token: bool = False
-    security_review: str = "FAILED"  # Default to FAILED
+    interacted_with: Optional[str] = None
+    interacting_account: Optional[str] = None
+    interaction_signature: Optional[str] = None
+    security_review: str = "FAILED"
+    token_graduated_to_raydium: bool = False
 
     def to_dict(self) -> Dict:
-        # First create dict with base fields
         result = {
             'name': self.name,
             'symbol': self.symbol,
@@ -181,7 +182,6 @@ class TokenDetails:
                                else self.update_authority)
         }
         
-        # Add extensions if they exist
         if self.extensions:
             result.update({
                 'permanent_delegate': self.extensions.permanent_delegate,
@@ -190,15 +190,13 @@ class TokenDetails:
                 'confidential_transfers': self.extensions.confidential_transfers_authority,
             })
         
-        # Add pump-specific fields if either condition is met
-        if (self.address.lower().endswith('pump') or 
-            self.update_authority == "TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM"):
-            if self.first_transaction is not None:
-                result['first_transaction'] = self.first_transaction
-                # Only include transaction_count if we actually fetched the history
-                if self.transaction_count is not None and self.transaction_count > 0:
-                    result['transaction_count'] = self.transaction_count
+        if self.update_authority == "TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM":
             result['is_genuine_pump_fun_token'] = self.is_genuine_pump_fun_token
+            result['token_graduated_to_raydium'] = self.token_graduated_to_raydium
+            if self.is_genuine_pump_fun_token and self.interacted_with:
+                result['interacted_with'] = self.interacted_with
+                result['interacting_account'] = self.interacting_account
+                result['interaction_signature'] = self.interaction_signature
         
         result['security_review'] = self.security_review
         return result
@@ -249,193 +247,277 @@ async def get_signatures_batch(session: aiohttp.ClientSession, address: str, bef
             await sleep(wait_time)
             continue
 
-async def verify_pump_token(session: aiohttp.ClientSession, token_address: str) -> Tuple[bool, Optional[str], int]:
-    """Verify if token is a genuine pump.fun token by checking its first transaction"""
+async def verify_pump_token(session: aiohttp.ClientSession, token_address: str, metadata: Optional[dict] = None) -> Tuple[bool, Optional[str], Optional[str], Optional[str]]:
+    """Verify if token is a genuine pump.fun token using new criteria"""
     PUMP_PROGRAM = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"
+    RAYDIUM_AMM_PROGRAM = "EhhTKJ6M13fa4jc281HpdyiNpAHj8uvxymgZqGuDs9Jj"
     PUMP_UPDATE_AUTHORITY = "TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM"
     
-    #logging.info(f"Starting pump token verification for {token_address}")
-    
-    # Check if it's a pump token by address suffix or update authority
-    is_pump_address = token_address.lower().endswith('pump')
-    metadata = await get_metadata(session, token_address)
-    is_pump_authority = metadata and metadata.get("update_authority") == PUMP_UPDATE_AUTHORITY
-    
-    # If both conditions are true, it's definitely a genuine pump token
-    if is_pump_address and is_pump_authority:
-        logging.info("Token has both pump suffix and pump authority - Verified as genuine pump.fun token!")
-        return True, None, 0  # We don't need to fetch transaction history in this case
-    
-    # If neither condition is true, it's definitely not a pump token
-    if not (is_pump_address or is_pump_authority):
-        logging.info("Not a pump token (neither ends with 'pump' nor has pump update authority)")
-        return False, None, 0
-    
-    # If we reach here, exactly one condition is true (XOR)
-    # We need to verify by checking the first transaction
-    logging.info("Only one pump condition met - verifying through transaction history...")
-    
+    # Step 1: Check update authority
+    if not metadata or metadata.get("update_authority") != PUMP_UPDATE_AUTHORITY:
+        logging.info(f"Token {token_address} failed update authority check")
+        return False, None, None, None
+
+    # Step 2: Check recent transactions for Pump.fun interaction
     try:
-        total_signatures = []
-        before = None
-        found_first = False
-        first_tx_sig = None
-        retry_count = 0
-        
-        while not found_first:
-            signatures = await get_signatures_batch(session, token_address, before)
-            
-            if not signatures:
-                logging.info("No signatures found in batch")
-                return False, None, 0  # Return 0 for transaction count if no signatures found
-                
-            total_signatures.extend(signatures)
-            logging.info(f"Total signatures collected: {len(total_signatures)}")
-            
-            if len(signatures) < BATCH_SIZE:
-                found_first = True
-                first_tx_sig = signatures[-1]['signature']
-                logging.info(f"Found first transaction: {first_tx_sig}")
-                
-                # Get transaction details
-                tx_params = {
-                    "jsonrpc": "2.0",
-                    "id": 1,
-                    "method": "getTransaction",
-                    "params": [
-                        first_tx_sig,
-                        {
-                            "encoding": "jsonParsed",
-                            "maxSupportedTransactionVersion": 0
-                        }
-                    ]
+        params = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "getSignaturesForAddress",
+            "params": [
+                token_address,
+                {
+                    "limit": 5,
+                    "commitment": "confirmed"
                 }
-                
-                logging.info("Fetching transaction details")
-                while True:
-                    try:
-                        async with session.post(SOLANA_RPC_URL, json=tx_params) as tx_response:
-                            if tx_response.status == 429:
-                                retry_count += 1
-                                wait_time = min(2 * (1.5 ** retry_count), 10)
-                                logging.info(f"Rate limited in tx fetch. Waiting {wait_time} seconds...")
-                                await sleep(wait_time)
-                                continue
-                                
-                            tx_data = await tx_response.json()
-                            if "error" in tx_data:
-                                logging.error(f"Transaction fetch error: {tx_data['error']}")
-                                break
-                                
-                            if "result" in tx_data and tx_data["result"]:
-                                tx_result = tx_data["result"]
-                                inner_instructions = tx_result.get("meta", {}).get("innerInstructions", [])
-                                
-                                for inner_group in inner_instructions:
-                                    for instruction in inner_group.get("instructions", []):
-                                        if "parsed" in instruction:
-                                            parsed_type = instruction["parsed"].get("type")
-                                            if parsed_type == "createAccount":
-                                                owner = instruction["parsed"].get("info", {}).get("owner")
-                                                if owner == PUMP_PROGRAM:
-                                                    logging.info("Verified as genuine pump.fun token through transaction history!")
-                                                    return True, first_tx_sig, len(total_signatures)
-                            break
-                    except Exception as e:
-                        retry_count += 1
-                        wait_time = min(2 * (1.5 ** retry_count), 10)
-                        await sleep(wait_time)
-                        continue
-                break
-            
-            before = signatures[-1]['signature']
-            await sleep(2)  # Base delay between signature batches
+            ]
+        }
         
-        logging.info("Completed verification - not a genuine pump.fun token")
-        return False, first_tx_sig, len(total_signatures)
-            
+        async with session.post(SOLANA_RPC_URL, json=params) as response:
+            data = await response.json()
+            if "result" not in data:
+                logging.warning(f"No transaction data found for token {token_address}")
+                # Continue to Step 3
+            else:
+                signatures = data["result"]
+                logging.info(f"Step 2: Found {len(signatures)} recent transactions")
+                
+                # Check each transaction for Pump.fun interaction
+                for sig_info in signatures:
+                    logging.info(f"Checking transaction: {sig_info['signature']}")
+                    tx_params = {
+                        "jsonrpc": "2.0",
+                        "id": 1,
+                        "method": "getTransaction",
+                        "params": [
+                            sig_info['signature'],
+                            {
+                                "encoding": "jsonParsed",
+                                "maxSupportedTransactionVersion": 0,
+                                "commitment": "confirmed"
+                            }
+                        ]
+                    }
+                    
+                    async with session.post(SOLANA_RPC_URL, json=tx_params) as tx_response:
+                        tx_data = await tx_response.json()
+                        if "result" not in tx_data or not tx_data["result"]:
+                            continue
+                            
+                        # Add detailed logging for debugging
+                        accounts = tx_data["result"].get("meta", {}).get("loadedAddresses", {}).get("writable", [])
+                        accounts.extend(tx_data["result"].get("meta", {}).get("loadedAddresses", {}).get("readonly", []))
+                        accounts.extend(tx_data["result"].get("transaction", {}).get("message", {}).get("accountKeys", []))
+                        
+                        #logging.info(f"\nDetailed Transaction Info for {sig_info['signature']}:")
+                        #logging.info("----------------------------------------")
+                        
+                        # Log all account details in the transaction and check for verification
+                        logging.info("Account Details:")
+                        for idx, acc in enumerate(accounts):
+                            try:
+                                # Get account info for each address
+                                acc_pubkey = acc if isinstance(acc, str) else acc.get('pubkey')
+                                if not acc_pubkey:
+                                    continue
+
+                                acc_info_params = {
+                                    "jsonrpc": "2.0",
+                                    "id": 1,
+                                    "method": "getAccountInfo",
+                                    "params": [
+                                        acc_pubkey,
+                                        {
+                                            "encoding": "jsonParsed",
+                                            "commitment": "confirmed"
+                                        }
+                                    ]
+                                }
+                                
+                                async with session.post(SOLANA_RPC_URL, json=acc_info_params) as acc_response:
+                                    acc_data = await acc_response.json()
+                                    if "result" not in acc_data or acc_data["result"] is None:
+                                        logging.info(f"No account info found for {acc_pubkey}")
+                                        continue
+                                        
+                                    acc_info = acc_data["result"].get("value")
+                                    if not acc_info:
+                                        logging.info(f"No value in account info for {acc_pubkey}")
+                                        continue
+                                        
+                                    acc_owner = acc_info.get('owner')
+                                    acc_program = acc_info.get('data', {}).get('program') if isinstance(acc_info.get('data'), dict) else None
+                                    
+                                    #logging.info(f"Account {idx}:")
+                                    #logging.info(f"  Pubkey: {acc_pubkey}")
+                                    #logging.info(f"  Owner: {acc_owner}")
+                                    #logging.info(f"  Program: {acc_program}")
+                                    #logging.info(f"  Data Program: {acc_info.get('data', {}).get('program') if isinstance(acc_info.get('data'), dict) else 'N/A'}")
+                                    #logging.info(f"  Signer: {acc.get('signer', False) if not isinstance(acc, str) else False}")
+                                    #logging.info(f"  Writable: {acc.get('writable', False) if not isinstance(acc, str) else False}")
+                                    #logging.info(f"  Raw Data: {acc_info}")  # Add this for debugging
+
+                                    # Check for verification during the initial fetch
+                                    if acc_owner == PUMP_PROGRAM:
+                                        logging.info(f"Found account {acc_pubkey} owned by Pump.fun program in tx {sig_info['signature']}")
+                                        return True, "pump.fun", acc_pubkey, sig_info['signature']
+
+                            except Exception as e:
+                                logging.error(f"Error fetching account info for account {idx}: {str(e)}")
+                                continue
+                        
+                        # Log instruction details
+                        instructions = tx_data["result"].get("transaction", {}).get("message", {}).get("instructions", [])
+                        #logging.info("\nInstruction Details:")
+                        #for idx, inst in enumerate(instructions):
+                        #    logging.info(f"Instruction {idx}:")
+                        #    logging.info(f"  Program ID: {inst.get('programId', 'N/A')}")
+                        #    logging.info(f"  Accounts: {inst.get('accounts', [])}")
+                        #    logging.info(f"  Data: {inst.get('data', 'N/A')}")
+                        
+                        #logging.info("----------------------------------------\n")
+                        
+                        # Now check each account's owner
+                        for acc in accounts:
+                            try:
+                                acc_pubkey = acc if isinstance(acc, str) else acc.get('pubkey')
+                                if not acc_pubkey:
+                                    continue
+                                    
+                                acc_info_params = {
+                                    "jsonrpc": "2.0",
+                                    "id": 1,
+                                    "method": "getAccountInfo",
+                                    "params": [acc_pubkey, {"encoding": "jsonParsed"}]
+                                }
+                                
+                                async with session.post(SOLANA_RPC_URL, json=acc_info_params) as acc_response:
+                                    acc_data = await acc_response.json()
+                                    if not acc_data.get("result", {}).get("value"):
+                                        continue
+                                        
+                                    acc_owner = acc_data.get("result", {}).get("value", {}).get("owner")
+                                    if not acc_owner:
+                                        continue
+                                    
+                                    if acc_owner == PUMP_PROGRAM:
+                                        logging.info(f"Found account {acc_pubkey} owned by Pump.fun program in tx {sig_info['signature']}")
+                                        return True, "pump.fun", acc_pubkey, sig_info['signature']
+                                    elif acc_owner == RAYDIUM_AMM_PROGRAM or acc_pubkey == RAYDIUM_AMM_PROGRAM:
+                                        logging.info(f"Found Raydium AMM interaction in tx {sig_info['signature']}")
+                                        return True, "raydium", acc_pubkey, sig_info['signature']
+                            except Exception as e:
+                                logging.error(f"Error checking account {acc_pubkey}: {str(e)}")
+                                continue
+                
+                logging.info("Step 2: No accounts owned by Pump.fun program found in recent transactions")
+    
     except Exception as e:
-        logging.error(f"Error in verify_pump_token: {str(e)}")
-        return False, None, 0
+        logging.error(f"Error checking transactions: {str(e)}")
+        # Continue to Step 3
+    
+    # Step 3: Check Raydium token list if no Pump.fun interaction found
+    logging.info(f"Step 3: Checking Raydium graduation status")
+    try:
+        await asyncio.sleep(1)
+        RAYDIUM_BASE_URL = "https://api-v3.raydium.io"
+        RAYDIUM_MINT_INFO_ENDPOINT = "/mint/ids"
+        
+        async with session.get(f"{RAYDIUM_BASE_URL}{RAYDIUM_MINT_INFO_ENDPOINT}?mints={token_address}") as response:
+            if response.status != 200:
+                logging.error(f"Raydium API returned status {response.status}")
+                return False, None, None, None
+                
+            raydium_data = await response.json()
+            logging.info(f"Raydium Token Info Response: {raydium_data}")
+            
+            # Check if response has data field and contains valid token info
+            if (raydium_data.get("success") and 
+                raydium_data.get("data") and 
+                isinstance(raydium_data["data"], list) and 
+                raydium_data["data"][0]):
+                
+                token_info = raydium_data["data"][0]
+                logging.info(f"Step 3: Token found in Raydium - Name: {token_info.get('name')}, Symbol: {token_info.get('symbol')}")
+                return True, "raydium_listed", None, None
+            else:
+                logging.info(f"Step 3: Token not found in Raydium (not graduated)")
+                return False, None, None, None
+                
+    except Exception as e:
+        logging.error(f"Error checking Raydium API: {str(e)}")
+        return False, None, None, None
+    
+    return False, None, None, None
 
 async def get_token_details_async(token_address: str, session: aiohttp.ClientSession) -> Tuple[TokenDetails, Optional[str]]:
-    """Async version of get_token_details with more conservative retry logic"""
-    for retry in range(MAX_RETRIES):
-        try:
-            # First get metadata to check update authority
-            metadata = await get_metadata(session, token_address)
-            is_pump_address = token_address.lower().endswith('pump')
-            is_pump_authority = metadata and metadata.get("update_authority") == "TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM"
-            
-            # Verify pump token if either condition is met
-            is_genuine_pump_fun_token = False
-            first_transaction = None
-            transaction_count = None
-            
-            if is_pump_address or is_pump_authority:
-                logging.info(f"Potential pump token detected - Address ends with 'pump': {is_pump_address}, Has pump authority: {is_pump_authority}")
-                is_genuine_pump_fun_token, first_transaction, transaction_count = await verify_pump_token(session, token_address)
-            
-            # Add base delay before request
-            await sleep(BASE_DELAY)
-            
-            payload = {
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "getAccountInfo",
-                "params": [
-                    token_address,
-                    {"encoding": "jsonParsed", "commitment": "confirmed"}
-                ]
-            }
-            
-            async with session.post(SOLANA_RPC_URL, json=payload) as response:
-                if response.status == 429:  # Rate limit hit
-                    if retry < MAX_RETRIES - 1:
-                        wait_time = RETRY_DELAY * (2 ** retry)  # Exponential backoff
-                        logging.warning(f"Rate limit hit, waiting {wait_time} seconds...")
-                        await sleep(wait_time)
-                        continue
-                    return "Rate limit exceeded", None
-                    
-                data = await response.json()
-                
-                if "error" in data:
-                    return f"RPC error: {data['error']}", None
-                    
-                if "result" not in data or not data["result"]:
-                    return "No data returned", None
-                    
-                account_data = data["result"]["value"]
-                
-                # Process the token data
-                token_details, owner_program = process_token_data(account_data, token_address)
+    try:
+        # First get metadata to check update authority
+        metadata = await get_metadata(session, token_address)
+        logging.info(f"Metadata response: {metadata}")
+        
+        # Get token account info to check program features
+        acc_info_params = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "getAccountInfo",
+            "params": [
+                token_address,
+                {"encoding": "jsonParsed"}
+            ]
+        }
+        
+        async with session.post(SOLANA_RPC_URL, json=acc_info_params) as response:
+            acc_data = await response.json()
+            if "result" in acc_data and acc_data["result"] and acc_data["result"]["value"]:
+                # Process token data to get security review
+                logging.info("Processing token account data for security review")
+                token_details, owner_program = process_token_data(acc_data["result"]["value"], token_address)
                 
                 # Update token details with metadata if available
-                if owner_program == TOKEN_PROGRAM and metadata:
-                    token_details.name = metadata["name"]
-                    token_details.symbol = metadata["symbol"]
-                    token_details.update_authority = metadata["update_authority"]
-                    #logging.info(f"Updated token details with metadata: {metadata}")
-                
-                # Update pump verification details if either condition was met
-                if is_pump_address or is_pump_authority:
-                    token_details.is_genuine_pump_fun_token = is_genuine_pump_fun_token
-                    token_details.first_transaction = first_transaction
-                    token_details.transaction_count = transaction_count
-                    #logging.info(f"Updated pump verification details - Genuine: {is_genuine_pump_fun_token}, Tx count: {transaction_count}")
+                if metadata:
+                    token_details.name = metadata.get("name", token_details.name)
+                    token_details.symbol = metadata.get("symbol", token_details.symbol)
+                    token_details.update_authority = metadata.get("update_authority")
+                    logging.info(f"Updated token details with metadata - Name: {token_details.name}, Symbol: {token_details.symbol}")
+            else:
+                logging.warning("No account data found for security review")
+                token_details = TokenDetails(
+                    name=metadata.get("name", "N/A") if metadata else "N/A",
+                    symbol=metadata.get("symbol", "N/A") if metadata else "N/A",
+                    address=token_address,
+                    owner_program=TOKEN_PROGRAM,
+                    freeze_authority=None,
+                    update_authority=metadata.get("update_authority") if metadata else None,
+                    security_review="FAILED"
+                )
+                owner_program = TOKEN_PROGRAM
+            
+        # Check if it's a potential pump token
+        is_pump_authority = metadata and metadata.get("update_authority") == "TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM"
+        
+        if is_pump_authority:
+            logging.info(f"Step 1: Potential pump token detected")
+            is_genuine_pump_fun_token, interacted_with, interacting_account, interaction_signature = await verify_pump_token(session, token_address, metadata)
+            
+            token_details.is_genuine_pump_fun_token = is_genuine_pump_fun_token
+            token_details.interacted_with = interacted_with
+            token_details.interacting_account = interacting_account
+            token_details.interaction_signature = interaction_signature
+            token_details.token_graduated_to_raydium = (is_genuine_pump_fun_token and interacted_with == "raydium_listed")
+        
+        return token_details, owner_program
 
-                return token_details, owner_program
-
-        except aiohttp.ClientError as e:
-            if retry < MAX_RETRIES - 1:
-                await sleep(RETRY_DELAY * (retry + 1))
-                continue
-            logging.error(f"Network error: {str(e)}")
-            return f"Network error: {str(e)}", None
-        except Exception as e:
-            logging.error(f"Unexpected error: {str(e)}")
-            return f"Unexpected error: {str(e)}", None
+    except Exception as e:
+        logging.error(f"Unexpected error: {str(e)}")
+        return TokenDetails(
+            name="ERROR",
+            symbol="ERROR",
+            address=token_address,
+            owner_program="Error",
+            freeze_authority=None,
+            security_review="FAILED"
+        ), None
 
 def process_token_data(account_data: Dict, token_address: str) -> Tuple[TokenDetails, str]:
     """Process the token data and return structured information"""
@@ -448,7 +530,6 @@ def process_token_data(account_data: Dict, token_address: str) -> Tuple[TokenDet
             address=token_address,
             owner_program="System Program",
             freeze_authority=None,
-            is_genuine_pump_fun_token=False,
             security_review="NOT_A_TOKEN"
         ), owner_program
 
@@ -460,7 +541,6 @@ def process_token_data(account_data: Dict, token_address: str) -> Tuple[TokenDet
             address=token_address,
             owner_program=f"{owner_program} (Not a token program)",
             freeze_authority=None,
-            is_genuine_pump_fun_token=False,
             security_review="NOT_A_TOKEN"
         ), owner_program
 
@@ -476,18 +556,18 @@ def process_token_data(account_data: Dict, token_address: str) -> Tuple[TokenDet
         address=token_address,
         owner_program=f"{owner_program} ({owner_label})",
         freeze_authority=freeze_authority,
-        extensions=None,
-        is_genuine_pump_fun_token=False
+        extensions=None
     )
+
     # Set security review based on token program type
     if owner_program == TOKEN_PROGRAM:
         # For standard SPL tokens, PASSED if no freeze authority
         base_details.security_review = "PASSED" if freeze_authority is None else "FAILED"
+        logging.info(f"Standard SPL token - Security review: {base_details.security_review}")
     elif owner_program == TOKEN_2022_PROGRAM:
         base_details = process_token_2022_extensions(base_details, info)
-        # Security review will be set in process_token_2022_extensions
     else:
-        base_details.security_review = "FAILED"  # Unknown token program
+        base_details.security_review = "FAILED"
 
     return base_details, owner_program
 
@@ -518,8 +598,8 @@ def process_token_2022_extensions(token_details: TokenDetails, info: Dict) -> To
     has_security_features = any([
         token_details.freeze_authority is not None,
         extensions.permanent_delegate is not None,
-        extensions.confidential_transfers_authority is not None,
         extensions.transfer_hook_authority is not None,
+        extensions.confidential_transfers_authority is not None,
         extensions.transfer_fee not in [None, 0]
     ])
     
