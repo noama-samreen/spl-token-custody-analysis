@@ -129,7 +129,7 @@ with tab1:
     if analyze_button and token_address:
         with st.spinner("Analyzing token..."):
             async def get_token():
-                start_timer()
+                start_timer()  # Start timing
                 add_log(f"Starting analysis for token: {token_address[:8]}...")
                 add_log("Fetching token data from blockchain...")
                 async with aiohttp.ClientSession() as session:
@@ -147,7 +147,12 @@ with tab1:
                 else:
                     st.session_state.analysis_results = result.to_dict()
             except Exception as e:
+                add_log(f"❌ Error: {str(e)}")
+                display_logs()
                 st.error(f"Error analyzing token: {str(e)}")
+
+    # Add this before displaying results
+    log_placeholder = st.empty()
     
     # Display results if they exist
     if st.session_state.analysis_results:
