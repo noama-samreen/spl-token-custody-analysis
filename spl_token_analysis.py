@@ -392,6 +392,7 @@ async def get_token_details_async(token_address: str, session: aiohttp.ClientSes
                     if metadata:
                         token_details.name = metadata["name"]
                         token_details.symbol = metadata["symbol"]
+                        token_details.update_authority = metadata["update_authority"]
                         logging.info(f"Updated token details with metadata: {metadata}")
                     else:
                         logging.warning("No metadata found or error fetching metadata")
