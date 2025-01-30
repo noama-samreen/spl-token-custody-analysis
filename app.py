@@ -2,7 +2,7 @@ import streamlit as st
 import asyncio
 import aiohttp
 import json
-from spl_token_analysis import get_token_details_async, process_tokens_concurrently
+from spl_token_analysis_v2 import get_token_details_async, process_tokens_concurrently
 from spl_report_generator import create_pdf
 import tempfile
 import os
@@ -133,6 +133,9 @@ with tab1:
                     st.error(result)
                 else:
                     st.session_state.analysis_results = result.to_dict()
+            except Exception as e:
+                st.error(f"Error analyzing token: {str(e)}")
+                return
     
     # Display results if they exist
     if st.session_state.analysis_results:
