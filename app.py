@@ -27,130 +27,118 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS - Adjusted font sizes
+# Custom CSS - Smaller fonts and better alignment
 st.markdown("""
 <style>
 /* Base styles */
 .main {
-    padding: 1.5rem;
+    padding: 1rem;
     max-width: 1200px;
     margin: 0 auto;
 }
 
-/* Input label */
-[data-testid="stTextInput"] label {
+/* Title and description */
+h1 {
     font-size: 16px !important;
-    color: #424242;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
 }
 
-/* Input field */
+.stMarkdown p {
+    font-size: 14px !important;
+    margin-bottom: 1.5rem;
+}
+
+/* Input section */
+[data-testid="stTextInput"] label {
+    font-size: 14px !important;
+    color: #424242;
+    margin-bottom: 0.25rem;
+}
+
 [data-testid="stTextInput"] input {
     border-radius: 6px;
     border: 1px solid #ddd;
-    padding: 0.75rem;
-    font-size: 15px;
+    padding: 0.5rem;
+    font-size: 13px;
 }
 
 /* Button styling */
 .stButton>button {
-    width: 100%;
     background-color: #7047EB;
     color: white;
     border-radius: 6px;
-    padding: 0.75rem 1rem;
+    padding: 0.5rem 1rem;
     border: none;
     transition: all 0.3s ease;
-    font-size: 16px;
+    font-size: 14px;
 }
 
-/* Section headers (SECURITY REVIEW, TOKEN PROGRAM, etc.) */
+/* Results section */
 [data-testid="stMarkdownContainer"] h3 {
-    font-size: 14px !important;
+    font-size: 12px !important;
     color: #666;
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
 }
 
-/* Section values (PASSED, SPL Token, etc.) */
 [data-testid="stMarkdownContainer"] p {
-    font-size: 18px !important;
+    font-size: 14px !important;
     color: #1f1f1f;
     font-weight: 500;
+    margin-bottom: 1rem;
 }
 
 /* Tab styling */
 .stTabs [data-baseweb="tab"] {
-    height: 50px;
+    height: 40px;
     border-radius: 6px;
     padding: 0 16px;
-    font-size: 16px;
+    font-size: 14px;
     background-color: #f8f9fa;
-}
-
-/* Main title */
-h1 {
-    font-size: 20px !important;
-    font-weight: 500;
-    color: #1f1f1f;
-    margin-bottom: 1rem;
 }
 
 /* View Raw Data expander */
 .streamlit-expanderHeader {
-    font-size: 16px;
-    padding: 1rem;
+    font-size: 14px;
+    padding: 0.75rem;
 }
 
 /* Download buttons */
 .stDownloadButton button {
-    font-size: 15px;
+    font-size: 13px;
+    padding: 0.5rem 1rem;
 }
 
 /* Footer text */
 footer {
-    margin-top: 3rem;
-    padding: 1rem;
+    margin-top: 2rem;
+    padding: 0.75rem;
     text-align: center;
-    font-size: 15px;
+    font-size: 13px;
+}
+
+/* Grid layout for results */
+.results-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin: 1rem 0;
 }
 
 /* Log display */
 [data-testid="stCode"] {
-    font-size: 14px;
-    line-height: 1.5;
+    font-size: 13px;
+    line-height: 1.4;
+    padding: 0.75rem;
 }
 
-/* Card-like containers */
-.stTabs [data-baseweb="tab-panel"] {
-    background: white;
-    padding: 25px;
-    border-radius: 10px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    margin-top: 10px;
-}
-
-/* Expander styling */
-.streamlit-expanderHeader {
-    background-color: white;
-    border-radius: 6px;
-    border: 1px solid #eee;
-}
-
-/* Log display styling */
-[data-testid="stCode"] {
-    white-space: pre-wrap;
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 14px;
-    line-height: 1.5;
-    padding: 15px;
-    background-color: #f8f9fa;
-    border: 1px solid #eee;
-    border-radius: 6px;
-    height: 300px;
-    overflow-y: auto;
-    margin-top: 1rem;
+/* Container padding and spacing */
+[data-testid="stVerticalBlock"] > [data-testid="stVerticalBlock"] {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
 }
 
 /* Progress bar */
