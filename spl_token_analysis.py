@@ -103,7 +103,8 @@ async def get_metadata(session: aiohttp.ClientSession, mint_address: str) -> Opt
                     # Skip the first byte (discriminator)
                     offset = 1
                     
-                    # Skip update authority (32 bytes)
+                    # Read update authority (32 bytes)
+                    update_authority = str(PublicKey(decoded_data[offset:offset + 32]))
                     offset += 32
                     
                     # Skip mint address (32 bytes)
@@ -126,10 +127,11 @@ async def get_metadata(session: aiohttp.ClientSession, mint_address: str) -> Opt
                     else:
                         symbol = "N/A"
                     
-                    logging.info(f"Successfully parsed metadata - Name: {name}, Symbol: {symbol}")
+                    logging.info(f"Successfully parsed metadata - Name: {name}, Symbol: {symbol}, Update Authority: {update_authority}")
                     return {
                         "name": name,
-                        "symbol": symbol
+                        "symbol": symbol,
+                        "update_authority": update_authority
                     }
                 except UnicodeDecodeError as e:
                     logging.error(f"Error decoding metadata strings: {e}")
@@ -159,6 +161,7 @@ class TokenDetails:
     address: str
     owner_program: str
     freeze_authority: Optional[str]
+    update_authority: Optional[str] = None  # Added update authority field
     extensions: Optional[Token2022Extensions] = None
     first_transaction: Optional[str] = None
     transaction_count: Optional[int] = None
@@ -172,7 +175,8 @@ class TokenDetails:
             'symbol': self.symbol,
             'address': self.address,
             'owner_program': self.owner_program,
-            'freeze_authority': self.freeze_authority
+            'freeze_authority': self.freeze_authority,
+            'update_authority': self.update_authority  # Added to dict output
         }
         
         # Add extensions if they exist
