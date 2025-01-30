@@ -8,6 +8,12 @@ import tempfile
 import os
 import zipfile
 
+# Initialize session state if not already done
+if 'analysis_results' not in st.session_state:
+    st.session_state.analysis_results = None
+if 'batch_results' not in st.session_state:
+    st.session_state.batch_results = None
+
 # Page config
 st.set_page_config(
     page_title="Solana Token Custody Risk Analyzer",
@@ -103,11 +109,16 @@ st.markdown("Analyze token details from the Solana blockchain, including Token-2
 tab1, tab2 = st.tabs(["Single Token", "Batch Process"])
 
 with tab1:
-    col1, col2 = st.columns([3, 1])
+    col1, col2, col3 = st.columns([3, 1, 1])
     with col1:
         token_address = st.text_input("Enter token address", placeholder="Enter Solana token address...")
     with col2:
         analyze_button = st.button("Analyze Token", key="single_analyze")
+    with col3:
+        if st.button("Start New Analysis", key="reset_single"):
+            st.session_state.analysis_results = None
+            token_address = ""
+            st.experimental_rerun()
     
     if analyze_button and token_address:
         with st.spinner("Analyzing token..."):
@@ -121,64 +132,72 @@ with tab1:
                 if isinstance(result, str):  # Error message
                     st.error(result)
                 else:
-                    # Convert TokenDetails to dictionary
-                    result_dict = result.to_dict()
-                    
-                    # Display key metrics in columns
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.metric("Security Review", result_dict.get('security_review', 'N/A'))
-                    with col2:
-                        st.metric("Token Program", "Token-2022" if "Token 2022" in result_dict.get('owner_program', '') else "SPL Token")
-                    
-                    # Display authorities in columns
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.metric("Update Authority", result_dict.get('update_authority', 'None'))
-                    with col2:
-                        st.metric("Freeze Authority", result_dict.get('freeze_authority', 'None'))
-                    
-                    # If transaction history was fetched, show those metrics
-                    if result_dict.get('first_transaction'):
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            if result_dict.get('transaction_count'):
-                                st.metric("Transaction Count", result_dict.get('transaction_count', 'N/A'))
-                        with col2:
-                            st.metric("Genuine Pump Token", "Yes" if result_dict.get('is_genuine_pump_fun_token', False) else "No")
-                    
-                    # Display full results
-                    st.json(result_dict)
-                    
-                    # Download buttons
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.download_button(
-                            "Download JSON",
-                            data=json.dumps(result_dict, indent=2),
-                            file_name=f"token_analysis_{token_address}.json",
-                            mime="application/json"
-                        )
-                    
-                    with col2:
-                        with tempfile.TemporaryDirectory() as temp_dir:
-                            pdf_path = create_pdf(result_dict, temp_dir)
-                            with open(pdf_path, "rb") as pdf_file:
-                                st.download_button(
-                                    "Download PDF",
-                                    data=pdf_file.read(),
-                                    file_name=f"token_analysis_{token_address}.pdf",
-                                    mime="application/pdf"
-                                )
-            except Exception as e:
-                st.error(f"Error: {str(e)}")
+                    st.session_state.analysis_results = result.to_dict()
+    
+    # Display results if they exist
+    if st.session_state.analysis_results:
+        result_dict = st.session_state.analysis_results
+        
+        # Display key metrics in columns
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Security Review", result_dict.get('security_review', 'N/A'))
+        with col2:
+            st.metric("Token Program", "Token-2022" if "Token 2022" in result_dict.get('owner_program', '') else "SPL Token")
+        
+        # Display authorities in columns
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Update Authority", result_dict.get('update_authority', 'None'))
+        with col2:
+            st.metric("Freeze Authority", result_dict.get('freeze_authority', 'None'))
+        
+        # If transaction history was fetched, show those metrics
+        if result_dict.get('first_transaction'):
+            col1, col2 = st.columns(2)
+            with col1:
+                if result_dict.get('transaction_count'):
+                    st.metric("Transaction Count", result_dict.get('transaction_count', 'N/A'))
+            with col2:
+                st.metric("Genuine Pump Token", "Yes" if result_dict.get('is_genuine_pump_fun_token', False) else "No")
+        
+        # Display full results
+        st.json(result_dict)
+        
+        # Download buttons
+        col1, col2 = st.columns(2)
+        with col1:
+            st.download_button(
+                "Download JSON",
+                data=json.dumps(result_dict, indent=2),
+                file_name=f"token_analysis_{token_address}.json",
+                mime="application/json"
+            )
+        
+        with col2:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                pdf_path = create_pdf(result_dict, temp_dir)
+                with open(pdf_path, "rb") as pdf_file:
+                    st.download_button(
+                        "Download PDF",
+                        data=pdf_file.read(),
+                        file_name=f"token_analysis_{token_address}.pdf",
+                        mime="application/pdf"
+                    )
 
 with tab2:
-    uploaded_file = st.file_uploader(
-        "Upload a text file with one token address per line",
-        type="txt",
-        help="File should contain one Solana token address per line"
-    )
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        uploaded_file = st.file_uploader(
+            "Upload a text file with one token address per line",
+            type="txt",
+            help="File should contain one Solana token address per line"
+        )
+    with col2:
+        if st.button("Start New Batch", key="reset_batch"):
+            st.session_state.batch_results = None
+            uploaded_file = None
+            st.experimental_rerun()
     
     if uploaded_file:
         addresses = [line.decode().strip() for line in uploaded_file if line.decode().strip()]
@@ -199,55 +218,58 @@ with tab2:
             
             try:
                 results = asyncio.run(process_batch())
+                st.session_state.batch_results = results
                 st.success(f"Successfully processed {len(results)} tokens")
-                
-                # Display and download options
-                st.json(results)
-                
-                col1, col2, col3 = st.columns(3)
-                
-                with col1:
-                    st.download_button(
-                        "Download JSON",
-                        data=json.dumps(results, indent=2),
-                        file_name="token_analysis_results.json",
-                        mime="application/json"
-                    )
-                
-                with col2:
-                    # Create CSV with update authority
-                    csv_data = "address,name,symbol,owner_program,update_authority,freeze_authority,security_review\n"
-                    for r in results:
-                        if r['status'] == 'success':
-                            csv_data += f"{r['address']},{r.get('name', 'N/A')},{r.get('symbol', 'N/A')},"
-                            csv_data += f"{r.get('owner_program', 'N/A')},{r.get('update_authority', 'None')},"
-                            csv_data += f"{r.get('freeze_authority', 'None')},{r.get('security_review', 'N/A')}\n"
-                    
-                    st.download_button(
-                        "Download CSV",
-                        data=csv_data,
-                        file_name="token_analysis_results.csv",
-                        mime="text/csv"
-                    )
-                
-                with col3:
-                    with tempfile.TemporaryDirectory() as temp_dir:
-                        zip_path = os.path.join(temp_dir, "token_analysis_pdfs.zip")
-                        with zipfile.ZipFile(zip_path, 'w') as zipf:
-                            for result in results:
-                                if result['status'] == 'success':
-                                    pdf_path = create_pdf(result, temp_dir)
-                                    zipf.write(pdf_path, os.path.basename(pdf_path))
-                        
-                        with open(zip_path, "rb") as zip_file:
-                            st.download_button(
-                                "Download PDFs",
-                                data=zip_file.read(),
-                                file_name="token_analysis_pdfs.zip",
-                                mime="application/zip"
-                            )
             except Exception as e:
                 st.error(f"Error during batch processing: {str(e)}")
+
+    # Display batch results if they exist
+    if st.session_state.batch_results:
+        results = st.session_state.batch_results
+        st.json(results)
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.download_button(
+                "Download JSON",
+                data=json.dumps(results, indent=2),
+                file_name="token_analysis_results.json",
+                mime="application/json"
+            )
+        
+        with col2:
+            # Create CSV with update authority
+            csv_data = "address,name,symbol,owner_program,update_authority,freeze_authority,security_review\n"
+            for r in results:
+                if r['status'] == 'success':
+                    csv_data += f"{r['address']},{r.get('name', 'N/A')},{r.get('symbol', 'N/A')},"
+                    csv_data += f"{r.get('owner_program', 'N/A')},{r.get('update_authority', 'None')},"
+                    csv_data += f"{r.get('freeze_authority', 'None')},{r.get('security_review', 'N/A')}\n"
+            
+            st.download_button(
+                "Download CSV",
+                data=csv_data,
+                file_name="token_analysis_results.csv",
+                mime="text/csv"
+            )
+        
+        with col3:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                zip_path = os.path.join(temp_dir, "token_analysis_pdfs.zip")
+                with zipfile.ZipFile(zip_path, 'w') as zipf:
+                    for result in results:
+                        if result['status'] == 'success':
+                            pdf_path = create_pdf(result, temp_dir)
+                            zipf.write(pdf_path, os.path.basename(pdf_path))
+                
+                with open(zip_path, "rb") as zip_file:
+                    st.download_button(
+                        "Download PDFs",
+                        data=zip_file.read(),
+                        file_name="token_analysis_pdfs.zip",
+                        mime="application/zip"
+                    )
 
 # Footer
 st.markdown("---")
