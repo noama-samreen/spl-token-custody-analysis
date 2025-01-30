@@ -2,7 +2,7 @@ import streamlit as st
 import asyncio
 import aiohttp
 import json
-from spl_token_analysis_v2 import get_token_details_async, process_tokens_concurrently
+from spl_token_analysis import get_token_details_async, process_tokens_concurrently
 from spl_report_generator import create_pdf
 import tempfile
 import os
