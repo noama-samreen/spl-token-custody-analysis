@@ -2,7 +2,7 @@ import streamlit as st
 import asyncio
 import aiohttp
 import json
-from spl_token_analysis import get_token_details_async, process_tokens_concurrently
+from spl_token_analysis_v2 import get_token_details_async, process_tokens_concurrently
 from spl_report_generator import create_pdf
 import tempfile
 import os
@@ -10,7 +10,7 @@ import zipfile
 from datetime import datetime
 import time
 
-# Initialize session state if not already done
+# Initialize session state
 if 'analysis_results' not in st.session_state:
     st.session_state.analysis_results = None
 if 'batch_results' not in st.session_state:
@@ -19,6 +19,34 @@ if 'logs' not in st.session_state:
     st.session_state.logs = []
 if 'start_time' not in st.session_state:
     st.session_state.start_time = None
+
+# Define helper functions first
+def start_timer():
+    """Start the execution timer"""
+    st.session_state.start_time = time.time()
+    st.session_state.logs = []  # Clear previous logs
+    add_log("Starting execution...")
+
+def get_elapsed_time():
+    """Get elapsed time since start"""
+    if st.session_state.start_time:
+        elapsed = time.time() - st.session_state.start_time
+        return f"{elapsed:.2f} seconds"
+    return "Not started"
+
+def add_log(message):
+    """Add a log message with timestamp"""
+    timestamp = datetime.now().strftime("%H:%M:%S")
+    elapsed = get_elapsed_time()
+    st.session_state.logs.append(f"[{timestamp}] ({elapsed}) {message}")
+
+def display_logs():
+    """Display all logs and total time in the placeholder"""
+    log_text = "\n".join(st.session_state.logs)
+    if st.session_state.start_time:
+        log_text += f"\n\n{'='*50}\nTotal execution time: {get_elapsed_time()}"
+    if 'log_placeholder' in globals():
+        log_placeholder.code(log_text, language=None)
 
 # Page config
 st.set_page_config(
@@ -107,6 +135,9 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Create log placeholder at the top level
+log_placeholder = st.empty()
+
 # Header
 st.title("🔍 Solana Token Custody Risk Analyzer")
 st.markdown("Analyze details of SPL-Tokens and Token-2022 assets on the Solana blockchain, including tokens from pump.fun.")
@@ -129,20 +160,19 @@ with tab1:
     if analyze_button and token_address:
         with st.spinner("Analyzing token..."):
             async def get_token():
-                start_timer()  # Start timing
+                start_timer()
                 add_log(f"Starting analysis for token: {token_address[:8]}...")
                 add_log("Fetching token data from blockchain...")
                 async with aiohttp.ClientSession() as session:
                     details, _ = await get_token_details_async(token_address, session)
                     add_log("Analyzing security parameters...")
-                    # More processing
                     add_log("✅ Analysis complete!")
                     display_logs()
                     return details
             
             try:
                 result = asyncio.run(get_token())
-                if isinstance(result, str):  # Error message
+                if isinstance(result, str):
                     st.error(result)
                 else:
                     st.session_state.analysis_results = result.to_dict()
@@ -151,9 +181,6 @@ with tab1:
                 display_logs()
                 st.error(f"Error analyzing token: {str(e)}")
 
-    # Add this before displaying results
-    log_placeholder = st.empty()
-    
     # Display results if they exist
     if st.session_state.analysis_results:
         result_dict = st.session_state.analysis_results
@@ -325,30 +352,4 @@ st.markdown("""
         <a href='https://github.com/noama-samreen/spl-token-custody-analysis' target='_blank' style='color: #7047EB; text-decoration: none;'>GitHub</a>
     </div>
 </footer>
-""", unsafe_allow_html=True)
-
-def start_timer():
-    """Start the execution timer"""
-    st.session_state.start_time = time.time()
-    st.session_state.logs = []  # Clear previous logs
-    add_log("Starting execution...")
-
-def get_elapsed_time():
-    """Get elapsed time since start"""
-    if st.session_state.start_time:
-        elapsed = time.time() - st.session_state.start_time
-        return f"{elapsed:.2f} seconds"
-    return "Not started"
-
-def add_log(message):
-    """Add a log message with timestamp and elapsed time"""
-    timestamp = datetime.now().strftime("%H:%M:%S")
-    elapsed = get_elapsed_time()
-    st.session_state.logs.append(f"[{timestamp}] ({elapsed}) {message}")
-
-def display_logs():
-    """Display all logs and total time in the placeholder"""
-    log_text = "\n".join(st.session_state.logs)
-    if st.session_state.start_time:
-        log_text += f"\n\n{'='*50}\nTotal execution time: {get_elapsed_time()}"
-    st.empty().code(log_text, language=None) 
+""", unsafe_allow_html=True) 
