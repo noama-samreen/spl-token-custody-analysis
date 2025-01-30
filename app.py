@@ -2,7 +2,7 @@ import streamlit as st
 import asyncio
 import aiohttp
 import json
-from spl_token_analysis import get_token_details_async, process_tokens_concurrently
+from spl_token_analysis_v2 import get_token_details_async, process_tokens_concurrently
 from spl_report_generator import create_pdf
 import tempfile
 import os
@@ -62,7 +62,7 @@ st.markdown("""
 
 /* New styles for metrics */
 [data-testid="stMetricValue"] {
-    font-size: 1.9rem !important;
+    font-size: 1.8rem !important;
     font-weight: 600;
 }
 [data-testid="stMetricLabel"] {
@@ -97,7 +97,7 @@ st.markdown("""
 
 # Header
 st.title("🔍 Solana Token Custody Risk Analyzer")
-st.markdown("Analyze details of standard SPL-Token program and Token-2022 program tokens on the Solana blockchain, including tokens from pump.fun.")
+st.markdown("Analyze token details from the Solana blockchain, including Token-2022 program support")
 
 # Create tabs
 tab1, tab2 = st.tabs(["Single Token", "Batch Process"])
@@ -138,11 +138,12 @@ with tab1:
                     with col2:
                         st.metric("Freeze Authority", result_dict.get('freeze_authority', 'None'))
                     
-                    # If it's a pump token, show additional metrics
-                    if token_address.lower().endswith('pump'):
+                    # If transaction history was fetched, show those metrics
+                    if result_dict.get('first_transaction'):
                         col1, col2 = st.columns(2)
                         with col1:
-                            st.metric("Transaction Count", result_dict.get('transaction_count', 'N/A'))
+                            if result_dict.get('transaction_count'):
+                                st.metric("Transaction Count", result_dict.get('transaction_count', 'N/A'))
                         with col2:
                             st.metric("Genuine Pump Token", "Yes" if result_dict.get('is_genuine_pump_fun_token', False) else "No")
                     
