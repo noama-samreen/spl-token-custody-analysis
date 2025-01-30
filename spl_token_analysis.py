@@ -439,7 +439,7 @@ async def verify_pump_token(session: aiohttp.ClientSession, token_address: str, 
                 
                 token_info = raydium_data["data"][0]
                 logging.info(f"Step 3: Token found in Raydium - Name: {token_info.get('name')}, Symbol: {token_info.get('symbol')}")
-                return True, "raydium_listed", None, None
+                return True, "raydium", None, None
             else:
                 logging.info(f"Step 3: Token not found in Raydium (not graduated)")
                 return False, None, None, None
@@ -504,7 +504,7 @@ async def get_token_details_async(token_address: str, session: aiohttp.ClientSes
             token_details.interacted_with = interacted_with
             token_details.interacting_account = interacting_account
             token_details.interaction_signature = interaction_signature
-            token_details.token_graduated_to_raydium = (is_genuine_pump_fun_token and interacted_with == "raydium_listed")
+            token_details.token_graduated_to_raydium = (is_genuine_pump_fun_token and interacted_with == "raydium")
         
         return token_details, owner_program
 
