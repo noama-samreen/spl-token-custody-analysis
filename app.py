@@ -27,10 +27,10 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS - Minimal, clean design
+# Custom CSS - Reverting to previous clean layout while maintaining logging
 st.markdown("""
 <style>
-/* Clean, minimal base styles */
+/* Base styles */
 .main {
     max-width: 1000px;
     margin: 0 auto;
@@ -62,6 +62,14 @@ st.markdown("""
 }
 
 /* Metric containers */
+.metric-container {
+    background: white;
+    padding: 1.2rem;
+    border-radius: 4px;
+    border: 1px solid #e0e0e0;
+    margin-bottom: 1rem;
+}
+
 [data-testid="stMetricValue"] {
     font-size: 24px !important;
     font-weight: 500;
@@ -71,6 +79,8 @@ st.markdown("""
 [data-testid="stMetricLabel"] {
     font-size: 14px !important;
     color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 /* Tab styling */
@@ -98,20 +108,6 @@ h1 {
     border-radius: 4px;
 }
 
-/* Footer */
-footer {
-    margin-top: 2rem;
-    padding: 1rem;
-    text-align: center;
-    font-size: 14px;
-    color: #666;
-}
-
-footer a {
-    color: #000;
-    text-decoration: none;
-}
-
 /* Log display styling */
 [data-testid="stCode"] {
     white-space: pre-wrap;
@@ -120,7 +116,7 @@ footer a {
     line-height: 1.5;
     padding: 15px;
     background-color: #f8f9fa;
-    border: 1px solid #eee;
+    border: 1px solid #e0e0e0;
     border-radius: 4px;
     height: 300px;
     overflow-y: auto;
@@ -140,8 +136,33 @@ footer a {
     border-radius: 4px;
 }
 
-[data-testid="stCode"]::-webkit-scrollbar-thumb:hover {
-    background: #555;
+/* Footer */
+footer {
+    margin-top: 2rem;
+    padding: 1rem;
+    text-align: center;
+    font-size: 14px;
+    color: #666;
+}
+
+footer a {
+    color: #000;
+    text-decoration: none;
+}
+
+/* Results layout */
+.results-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+/* Download buttons container */
+.download-container {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -149,7 +170,7 @@ footer a {
 # Update the header section
 st.markdown("<div class='header'>", unsafe_allow_html=True)
 st.title("🔍 Solana Token Custody Risk Analyzer")
-st.markdown("Analyze details of SPL tokens and Token-2022 assets on the Solana blockchain, including tokens from pump.fun.")
+st.markdown("Analyze token details from the Solana blockchain, including Token-2022 program support")
 st.markdown("</div>", unsafe_allow_html=True)
 
 # Create tabs
