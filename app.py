@@ -21,89 +21,132 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS
+# Custom CSS - Updated for cleaner layout
 st.markdown("""
 <style>
+/* Base styles */
 .main {
-    padding: 2rem;
+    padding: 1.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
 }
+
+/* Card-like containers */
+.stTabs [data-baseweb="tab-panel"] {
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-top: 10px;
+}
+
+/* Button styling */
 .stButton>button {
     width: 100%;
     background-color: #7047EB;
     color: white;
-    border-radius: 8px;
+    border-radius: 6px;
     padding: 0.5rem 1rem;
-    margin: 1rem 0;
+    border: none;
+    transition: all 0.3s ease;
 }
 .stButton>button:hover {
     background-color: #5835c4;
+    transform: translateY(-1px);
 }
-.json-output {
+
+/* Metrics styling */
+.metric-container {
+    background-color: white;
+    padding: 1.2rem;
+    border-radius: 8px;
+    border: 1px solid #eee;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+[data-testid="stMetricValue"] {
+    font-size: 1.4rem !important;
+    font-weight: 600;
+    color: #1f1f1f;
+}
+
+[data-testid="stMetricLabel"] {
+    font-size: 0.9rem !important;
+    font-weight: 500;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Input fields */
+[data-testid="stTextInput"] input {
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    padding: 0.5rem;
+}
+
+/* Expander styling */
+.streamlit-expanderHeader {
+    background-color: white;
+    border-radius: 6px;
+    border: 1px solid #eee;
+}
+
+/* JSON output */
+.stJson {
     background-color: #f8f9fa;
     padding: 1rem;
-    border-radius: 8px;
-    font-family: monospace;
-    white-space: pre-wrap;
-    font-size: 0.85rem;
+    border-radius: 6px;
+    font-size: 0.85rem !important;
+    border: 1px solid #eee;
 }
-.output-container {
-    margin: 2rem 0;
-    padding: 1rem;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-}
-.header-container {
-    text-align: center;
-    padding: 2rem 0;
-}
+
+/* Progress bar */
 .stProgress > div > div > div {
     background-color: #7047EB;
 }
-.metric-container {
+
+/* Tab styling */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 8px;
+    padding: 0.5rem;
+}
+
+.stTabs [data-baseweb="tab"] {
+    height: 50px;
+    border-radius: 6px;
+    padding: 0 16px;
     background-color: #f8f9fa;
+}
+
+.stTabs [data-baseweb="tab"][aria-selected="true"] {
+    background-color: #7047EB;
+    color: white;
+}
+
+/* Header styling */
+h1 {
+    font-size: 2.2rem !important;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: #1f1f1f;
+}
+
+/* Footer styling */
+footer {
+    margin-top: 3rem;
     padding: 1rem;
-    border-radius: 8px;
-    margin: 0.5rem 0;
-}
-
-/* New styles for metrics */
-[data-testid="stMetricValue"] {
-    font-size: 1.8rem !important;
-    font-weight: 600;
-}
-[data-testid="stMetricLabel"] {
-    font-size: 1rem !important;
-    font-weight: 500;
-    color: #555;
-}
-[data-testid="stMetricDelta"] {
-    font-size: 0.9rem !important;
-}
-
-/* Style for long addresses */
-[data-testid="stMetricValue"] div {
-    font-family: 'Courier New', monospace;
-    font-size: 0.85rem !important;
-    word-break: break-all;
-    line-height: 1.2;
-}
-
-/* Adjust overall container padding */
-.element-container {
-    padding: 0.5rem 0;
-}
-
-/* Style JSON display */
-.stJson {
-    font-size: 0.85rem !important;
-    line-height: 1.4;
+    text-align: center;
+    border-top: 1px solid #eee;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# Header
+# Update the header section
+st.markdown("<div class='header'>", unsafe_allow_html=True)
 st.title("🔍 Solana Token Custody Risk Analyzer")
 st.markdown("Analyze token details from the Solana blockchain, including Token-2022 program support")
+st.markdown("</div>", unsafe_allow_html=True)
 
 # Create tabs
 tab1, tab2 = st.tabs(["Single Token", "Batch Process"])
@@ -295,11 +338,12 @@ with tab2:
                         mime="application/zip"
                     )
 
-# Footer
-st.markdown("---")
+# Update the footer section
 st.markdown("""
-<div style='text-align: center; color: #666;'>
-    Noama Samreen | 
-    <a href='https://github.com/noama-samreen/spl-token-custody-analysis' target='_blank'>GitHub</a>
-</div>
+<footer>
+    <div style='color: #666;'>
+        Noama Samreen | 
+        <a href='https://github.com/noama-samreen/spl-token-custody-analysis' target='_blank' style='color: #7047EB; text-decoration: none;'>GitHub</a>
+    </div>
+</footer>
 """, unsafe_allow_html=True) 
