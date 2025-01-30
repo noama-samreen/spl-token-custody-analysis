@@ -16,7 +16,7 @@ if 'batch_results' not in st.session_state:
 
 # Page config
 st.set_page_config(
-    page_title="Solana Token Security Analyzer",
+    page_title="Solana Token Custody Risk Analyzer",
     page_icon="🔍",
     layout="wide"
 )
@@ -102,8 +102,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Header
-st.title("🔍 Solana Token Security Analyzer")
-st.markdown("Analyze details of SPL Token program and Token-2022 program assets on the Solana blockchain, including tokens from pump.fun.")
+st.title("🔍 Solana Token Custody Risk Analyzer")
+st.markdown("Analyze token details from the Solana blockchain, including Token-2022 program support")
 
 # Create tabs
 tab1, tab2 = st.tabs(["Single Token", "Batch Process"])
@@ -154,17 +154,39 @@ with tab1:
         with col2:
             st.metric("Freeze Authority", result_dict.get('freeze_authority', 'None'))
         
-        # If transaction history was fetched, show those metrics
-        if result_dict.get('first_transaction'):
+        # Display pump.fun specific metrics if applicable
+        if "Pump.Fun Mint Authority" in str(result_dict.get('update_authority', '')):
             col1, col2 = st.columns(2)
             with col1:
-                if result_dict.get('transaction_count'):
-                    st.metric("Transaction Count", result_dict.get('transaction_count', 'N/A'))
-            with col2:
                 st.metric("Genuine Pump Token", "Yes" if result_dict.get('is_genuine_pump_fun_token', False) else "No")
+            with col2:
+                st.metric("Graduated to Raydium", "Yes" if result_dict.get('token_graduated_to_raydium', False) else "No")
+            
+            if result_dict.get('interacted_with'):
+                st.metric("Interaction Type", result_dict.get('interacted_with', 'None'))
+                
+                if result_dict.get('interacting_account'):
+                    with st.expander("Interaction Details"):
+                        st.text("Interacting Account")
+                        st.code(result_dict.get('interacting_account'))
+                        if result_dict.get('interaction_signature'):
+                            st.text("Transaction Signature")
+                            st.code(result_dict.get('interaction_signature'))
+        
+        # If token is Token-2022, display extension features
+        if "Token 2022" in result_dict.get('owner_program', ''):
+            st.subheader("Token-2022 Features")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Permanent Delegate", result_dict.get('permanent_delegate', 'None'))
+                st.metric("Transfer Hook", result_dict.get('transfer_hook', 'None'))
+            with col2:
+                st.metric("Transaction Fees", result_dict.get('transaction_fees', 'None'))
+                st.metric("Confidential Transfers", result_dict.get('confidential_transfers', 'None'))
         
         # Display full results
-        st.json(result_dict)
+        with st.expander("View Raw Data"):
+            st.json(result_dict)
         
         # Download buttons
         col1, col2 = st.columns(2)
