@@ -50,7 +50,7 @@ def display_logs():
 
 # Page config
 st.set_page_config(
-    page_title="Solana Token Custody Risk Analyzer",
+    page_title="Solana Token Security Analyzer",
     page_icon="🔍",
     layout="wide"
 )
@@ -139,8 +139,8 @@ st.markdown("""
 log_placeholder = st.empty()
 
 # Header
-st.title("🔍 Solana Token Custody Risk Analyzer")
-st.markdown("Analyze details of SPL-Tokens and Token-2022 assets on the Solana blockchain, including tokens from pump.fun.")
+st.title("🔍 Solana Token Security Analyzer")
+st.markdown("Analyze details of SPL tokens and Token-2022 assets on the Solana blockchain, including tokens from pump.fun")
 
 # Create tabs
 tab1, tab2 = st.tabs(["Single Token", "Batch Process"])
@@ -156,6 +156,9 @@ with tab1:
             st.session_state.analysis_results = None
             token_address = ""
             st.experimental_rerun()
+    
+    # Place log display right after input section
+    log_placeholder = st.empty()
     
     if analyze_button and token_address:
         with st.spinner("Analyzing token..."):
@@ -181,6 +184,9 @@ with tab1:
                 display_logs()
                 st.error(f"Error analyzing token: {str(e)}")
 
+    # Add some spacing between logs and results
+    st.markdown("<div style='margin: 1rem 0;'></div>", unsafe_allow_html=True)
+    
     # Display results if they exist
     if st.session_state.analysis_results:
         result_dict = st.session_state.analysis_results
