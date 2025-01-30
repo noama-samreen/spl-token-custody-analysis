@@ -187,15 +187,19 @@ trusted Token Program"""
             'confidential_transfers'
         ])
     
-    # Add transaction-specific fields only if they exist
-    if token_data.get('first_transaction'):
-        field_order.extend(['first_transaction', 'transaction_count'])
-    
-    # Define program name mapping
-    PROGRAM_NAMES = {
-        "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA": "Token Program",
-        "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb": "Token 2022 Program"
-    }
+    # Add pump.fun specific fields if update authority matches
+    if "Pump.Fun Mint Authority" in str(token_data.get('update_authority', '')):
+        field_order.extend([
+            'is_genuine_pump_fun_token',
+            'interacted_with',
+            'token_graduated_to_raydium'
+        ])
+        # Only add these fields if there was an interaction
+        if token_data.get('interacting_account') or token_data.get('interaction_signature'):
+            field_order.extend([
+                'interacting_account',
+                'interaction_signature'
+            ])
     
     # Add fields in specified order with error handling
     for field in field_order:
@@ -205,24 +209,16 @@ trusted Token Program"""
             
         # Special handling for owner program to show address and name
         if field == 'owner_program' and value != 'None':
-            program_name = PROGRAM_NAMES.get(value, "Unknown Program")
-            if program_name != "Unknown Program":
-                value = f"{value} ({program_name})"
+            # The value already includes the program name from the JSON
+            pass
         
-        # Special handling for update authority to show Pump.Fun label if present
-        if field == 'update_authority' and value != 'None':
-            if "Pump.Fun Mint Authority" in str(value):
-                # The value already includes the label from the JSON
-                pass
-            
-        if isinstance(value, dict):
-            value = json.dumps(value, indent=2)
+        # Format boolean values
+        if isinstance(value, bool):
+            value = str(value)
             
         # Format the field name for display
         display_name = str(field).replace('_', ' ').title()
-        if field == 'owner_program':
-            display_name = 'Owner Program'
-            
+        
         additional_data.append([
             Paragraph(display_name, cell_style),
             Paragraph(str(value), cell_style)
