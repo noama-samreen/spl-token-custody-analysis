@@ -292,84 +292,108 @@ with tab2:
     with col2:
         if st.button("Start New Batch", key="reset_batch"):
             st.session_state.batch_results = None
+            st.session_state.logs = []
             uploaded_file = None
             st.experimental_rerun()
+    
+    # Add log display area right after upload
+    log_placeholder = st.empty()
+    results_placeholder = st.empty()
     
     if uploaded_file:
         addresses = [line.decode().strip() for line in uploaded_file if line.decode().strip()]
         st.info(f"Found {len(addresses)} addresses in file")
         
         if st.button("Process Batch", key="batch_process"):
-            progress_bar = st.progress(0)
-            status_text = st.empty()
+            # Clear previous results while processing
+            results_placeholder.empty()
             
             async def process_batch():
                 start_timer()
-                add_log("Starting batch processing...")
+                add_log(f"Starting batch processing for {len(addresses)} tokens...")
+                display_logs()
+                
+                results = []
                 async with aiohttp.ClientSession() as session:
-                    results = await process_tokens_concurrently(addresses, session)
-                    for i, _ in enumerate(results, 1):
+                    for i, address in enumerate(addresses, 1):
+                        add_log(f"Processing token {i}/{len(addresses)}: {address[:8]}...")
+                        display_logs()
+                        
+                        try:
+                            details, _ = await get_token_details_async(address, session)
+                            add_log(f"✅ Successfully processed token {i}: {address[:8]}")
+                            results.append({"status": "success", "address": address, **details.to_dict()})
+                        except Exception as e:
+                            add_log(f"❌ Failed to process token {i}: {address[:8]} - {str(e)}")
+                            results.append({"status": "error", "address": address, "error": str(e)})
+                        
+                        # Update progress
                         progress = i / len(addresses)
-                        progress_bar.progress(progress)
-                        status_text.text(f"Processed {i}/{len(addresses)} tokens")
-                    add_log("Batch processing completed!")
-                    display_logs()
-                    return results
+                        progress_bar = "█" * int(progress * 40) + "░" * (40 - int(progress * 40))
+                        add_log(f"Progress: |{progress_bar}| {progress:.1%}")
+                        display_logs()
+                        
+                        # Small delay to show progress
+                        await asyncio.sleep(0.1)
+                
+                add_log("✨ Batch processing completed!")
+                display_logs()
+                return results
             
             try:
                 results = asyncio.run(process_batch())
                 st.session_state.batch_results = results
-                st.success(f"Successfully processed {len(results)} tokens")
-            except Exception as e:
-                st.error(f"Error during batch processing: {str(e)}")
-
-    # Display batch results if they exist
-    if st.session_state.batch_results:
-        results = st.session_state.batch_results
-        st.json(results)
-        
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            st.download_button(
-                "Download JSON",
-                data=json.dumps(results, indent=2),
-                file_name="token_analysis_results.json",
-                mime="application/json"
-            )
-        
-        with col2:
-            # Create CSV with update authority
-            csv_data = "address,name,symbol,owner_program,update_authority,freeze_authority,security_review\n"
-            for r in results:
-                if r['status'] == 'success':
-                    csv_data += f"{r['address']},{r.get('name', 'N/A')},{r.get('symbol', 'N/A')},"
-                    csv_data += f"{r.get('owner_program', 'N/A')},{r.get('update_authority', 'None')},"
-                    csv_data += f"{r.get('freeze_authority', 'None')},{r.get('security_review', 'N/A')}\n"
-            
-            st.download_button(
-                "Download CSV",
-                data=csv_data,
-                file_name="token_analysis_results.csv",
-                mime="text/csv"
-            )
-        
-        with col3:
-            with tempfile.TemporaryDirectory() as temp_dir:
-                zip_path = os.path.join(temp_dir, "token_analysis_pdfs.zip")
-                with zipfile.ZipFile(zip_path, 'w') as zipf:
-                    for result in results:
-                        if result['status'] == 'success':
-                            pdf_path = create_pdf(result, temp_dir)
-                            zipf.write(pdf_path, os.path.basename(pdf_path))
                 
-                with open(zip_path, "rb") as zip_file:
-                    st.download_button(
-                        "Download PDFs",
-                        data=zip_file.read(),
-                        file_name="token_analysis_pdfs.zip",
-                        mime="application/zip"
-                    )
+                # Display final results in the placeholder
+                with results_placeholder:
+                    st.success(f"Successfully processed {len(results)} tokens")
+                    st.json(results)
+                    
+                    # Download buttons
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.download_button(
+                            "Download JSON",
+                            data=json.dumps(results, indent=2),
+                            file_name="token_analysis_results.json",
+                            mime="application/json"
+                        )
+                    with col2:
+                        # Create CSV with update authority
+                        csv_data = "address,name,symbol,owner_program,update_authority,freeze_authority,security_review\n"
+                        for r in results:
+                            if r['status'] == 'success':
+                                csv_data += f"{r['address']},{r.get('name', 'N/A')},{r.get('symbol', 'N/A')},"
+                                csv_data += f"{r.get('owner_program', 'N/A')},{r.get('update_authority', 'None')},"
+                                csv_data += f"{r.get('freeze_authority', 'None')},{r.get('security_review', 'N/A')}\n"
+                        
+                        st.download_button(
+                            "Download CSV",
+                            data=csv_data,
+                            file_name="token_analysis_results.csv",
+                            mime="text/csv"
+                        )
+                    with col3:
+                        with tempfile.TemporaryDirectory() as temp_dir:
+                            zip_path = os.path.join(temp_dir, "token_analysis_pdfs.zip")
+                            with zipfile.ZipFile(zip_path, 'w') as zipf:
+                                for result in results:
+                                    if result['status'] == 'success':
+                                        pdf_path = create_pdf(result, temp_dir)
+                                        zipf.write(pdf_path, os.path.basename(pdf_path))
+                            
+                            with open(zip_path, "rb") as zip_file:
+                                st.download_button(
+                                    "Download PDFs",
+                                    data=zip_file.read(),
+                                    file_name="token_analysis_pdfs.zip",
+                                    mime="application/zip"
+                                )
+
+            except Exception as e:
+                add_log(f"❌ Error during batch processing: {str(e)}")
+                display_logs()
+                st.error(f"Error during batch processing: {str(e)}")
 
 # Update the footer section
 st.markdown("""
