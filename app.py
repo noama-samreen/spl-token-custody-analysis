@@ -27,85 +27,76 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS - Reverting to previous clean layout while maintaining logging
+# Custom CSS - Original purple theme with logging
 st.markdown("""
 <style>
 /* Base styles */
 .main {
-    max-width: 1000px;
+    padding: 1.5rem;
+    max-width: 1200px;
     margin: 0 auto;
-    padding: 1rem;
 }
 
-/* Simple input field */
-[data-testid="stTextInput"] input {
-    border: 1px solid #e0e0e0;
-    border-radius: 4px;
-    padding: 8px 12px;
-    font-size: 14px;
-    width: 100%;
+/* Card-like containers */
+.stTabs [data-baseweb="tab-panel"] {
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-top: 10px;
 }
 
-/* Clean button style */
+/* Button styling */
 .stButton>button {
-    background-color: #000;
+    width: 100%;
+    background-color: #7047EB;
     color: white;
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
     border: none;
-    border-radius: 4px;
-    padding: 8px 16px;
-    font-size: 14px;
-    cursor: pointer;
+    transition: all 0.3s ease;
 }
 
 .stButton>button:hover {
-    background-color: #333;
+    background-color: #5835c4;
+    transform: translateY(-1px);
 }
 
-/* Metric containers */
+/* Metrics styling */
 .metric-container {
-    background: white;
+    background-color: white;
     padding: 1.2rem;
-    border-radius: 4px;
-    border: 1px solid #e0e0e0;
-    margin-bottom: 1rem;
+    border-radius: 8px;
+    border: 1px solid #eee;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 [data-testid="stMetricValue"] {
-    font-size: 24px !important;
-    font-weight: 500;
-    color: #000;
+    font-size: 1.4rem !important;
+    font-weight: 600;
+    color: #1f1f1f;
 }
 
 [data-testid="stMetricLabel"] {
-    font-size: 14px !important;
+    font-size: 0.9rem !important;
+    font-weight: 500;
     color: #666;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
-/* Tab styling */
-.stTabs [data-baseweb="tab"] {
-    font-size: 14px;
-    padding: 8px 16px;
+/* Input fields */
+[data-testid="stTextInput"] input {
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    padding: 0.5rem;
 }
 
-.stTabs [data-baseweb="tab"][aria-selected="true"] {
-    background-color: #000;
-    color: white;
-}
-
-/* Header */
-h1 {
-    font-size: 28px !important;
-    font-weight: 500;
-    margin-bottom: 1rem;
-}
-
-/* Clean expander */
+/* Expander styling */
 .streamlit-expanderHeader {
     background-color: white;
-    border: 1px solid #e0e0e0;
-    border-radius: 4px;
+    border-radius: 6px;
+    border: 1px solid #eee;
 }
 
 /* Log display styling */
@@ -116,10 +107,60 @@ h1 {
     line-height: 1.5;
     padding: 15px;
     background-color: #f8f9fa;
-    border: 1px solid #e0e0e0;
-    border-radius: 4px;
+    border: 1px solid #eee;
+    border-radius: 6px;
     height: 300px;
     overflow-y: auto;
+    margin-top: 1rem;
+}
+
+/* Progress bar */
+.stProgress > div > div > div {
+    background-color: #7047EB;
+}
+
+/* Tab styling */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 8px;
+    padding: 0.5rem;
+}
+
+.stTabs [data-baseweb="tab"] {
+    height: 50px;
+    border-radius: 6px;
+    padding: 0 16px;
+    background-color: #f8f9fa;
+}
+
+.stTabs [data-baseweb="tab"][aria-selected="true"] {
+    background-color: #7047EB;
+    color: white;
+}
+
+/* Header styling */
+h1 {
+    font-size: 2.2rem !important;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: #1f1f1f;
+}
+
+/* Footer styling */
+footer {
+    margin-top: 3rem;
+    padding: 1rem;
+    text-align: center;
+    border-top: 1px solid #eee;
+}
+
+footer a {
+    color: #7047EB;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+footer a:hover {
+    color: #5835c4;
 }
 
 /* Scrollbar styling */
@@ -132,37 +173,12 @@ h1 {
 }
 
 [data-testid="stCode"]::-webkit-scrollbar-thumb {
-    background: #888;
+    background: #7047EB;
     border-radius: 4px;
 }
 
-/* Footer */
-footer {
-    margin-top: 2rem;
-    padding: 1rem;
-    text-align: center;
-    font-size: 14px;
-    color: #666;
-}
-
-footer a {
-    color: #000;
-    text-decoration: none;
-}
-
-/* Results layout */
-.results-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-    margin: 1rem 0;
-}
-
-/* Download buttons container */
-.download-container {
-    display: flex;
-    gap: 1rem;
-    margin-top: 1rem;
+[data-testid="stCode"]::-webkit-scrollbar-thumb:hover {
+    background: #5835c4;
 }
 </style>
 """, unsafe_allow_html=True)
