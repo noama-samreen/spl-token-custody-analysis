@@ -16,7 +16,7 @@ if 'batch_results' not in st.session_state:
 
 # Page config
 st.set_page_config(
-    page_title="Solana Token Custody Risk Analyzer",
+    page_title="Solana Token Security Analyzer",
     page_icon="🔍",
     layout="wide"
 )
@@ -102,8 +102,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Header
-st.title("🔍 Solana Token Custody Risk Analyzer")
-st.markdown("Analyze token details from the Solana blockchain, including Token-2022 program support")
+st.title("🔍 Solana Token Security Analyzer")
+st.markdown("Analyze details of SPL Token program and Token-2022 program assets on the Solana blockchain, including tokens from pump.fun.")
 
 # Create tabs
 tab1, tab2 = st.tabs(["Single Token", "Batch Process"])
