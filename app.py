@@ -103,7 +103,7 @@ with tab1:
                         with col1:
                             st.metric("Transaction Count", result_dict.get('transaction_count', 'N/A'))
                         with col2:
-                            st.metric("Genuine Pump Token", "Yes" if result_dict.get('is_genuine_pump_fun_token', False) else "No")
+                            st.metric("Genuine Pump.fun Token", "Yes" if result_dict.get('is_genuine_pump_fun_token', False) else "No")
                     
                     # Display full results
                     st.json(result_dict)
