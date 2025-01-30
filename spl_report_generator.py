@@ -181,8 +181,8 @@ trusted Token Program"""
         'confidential_transfers'
     ]
     
-    # Add pump-specific fields if it's a pump token
-    if token_data.get('is_genuine_pump_fun_token', False):
+    # Add transaction-specific fields only if they exist
+    if token_data.get('first_transaction'):
         field_order.extend(['first_transaction', 'transaction_count'])
     
     # Define program name mapping
@@ -202,6 +202,12 @@ trusted Token Program"""
             program_name = PROGRAM_NAMES.get(value, "Unknown Program")
             if program_name != "Unknown Program":
                 value = f"{value} ({program_name})"
+        
+        # Special handling for update authority to show Pump.Fun label if present
+        if field == 'update_authority' and value != 'None':
+            if "Pump.Fun Mint Authority" in str(value):
+                # The value already includes the label from the JSON
+                pass
             
         if isinstance(value, dict):
             value = json.dumps(value, indent=2)
