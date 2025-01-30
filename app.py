@@ -27,7 +27,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS - Original purple theme with logging
+# Custom CSS - Adjusted font sizes
 st.markdown("""
 <style>
 /* Base styles */
@@ -37,13 +37,18 @@ st.markdown("""
     margin: 0 auto;
 }
 
-/* Card-like containers */
-.stTabs [data-baseweb="tab-panel"] {
-    background: white;
-    padding: 25px;
-    border-radius: 10px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    margin-top: 10px;
+/* Input label */
+[data-testid="stTextInput"] label {
+    font-size: 16px !important;
+    color: #424242;
+}
+
+/* Input field */
+[data-testid="stTextInput"] input {
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    padding: 0.75rem;
+    font-size: 15px;
 }
 
 /* Button styling */
@@ -52,44 +57,78 @@ st.markdown("""
     background-color: #7047EB;
     color: white;
     border-radius: 6px;
-    padding: 0.5rem 1rem;
+    padding: 0.75rem 1rem;
     border: none;
     transition: all 0.3s ease;
+    font-size: 16px;
 }
 
-.stButton>button:hover {
-    background-color: #5835c4;
-    transform: translateY(-1px);
-}
-
-/* Metrics styling */
-.metric-container {
-    background-color: white;
-    padding: 1.2rem;
-    border-radius: 8px;
-    border: 1px solid #eee;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-[data-testid="stMetricValue"] {
-    font-size: 1.4rem !important;
-    font-weight: 600;
-    color: #1f1f1f;
-}
-
-[data-testid="stMetricLabel"] {
-    font-size: 0.9rem !important;
-    font-weight: 500;
+/* Section headers (SECURITY REVIEW, TOKEN PROGRAM, etc.) */
+[data-testid="stMarkdownContainer"] h3 {
+    font-size: 14px !important;
     color: #666;
+    font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    margin-bottom: 0.5rem;
 }
 
-/* Input fields */
-[data-testid="stTextInput"] input {
+/* Section values (PASSED, SPL Token, etc.) */
+[data-testid="stMarkdownContainer"] p {
+    font-size: 18px !important;
+    color: #1f1f1f;
+    font-weight: 500;
+}
+
+/* Tab styling */
+.stTabs [data-baseweb="tab"] {
+    height: 50px;
     border-radius: 6px;
-    border: 1px solid #ddd;
-    padding: 0.5rem;
+    padding: 0 16px;
+    font-size: 16px;
+    background-color: #f8f9fa;
+}
+
+/* Main title */
+h1 {
+    font-size: 20px !important;
+    font-weight: 500;
+    color: #1f1f1f;
+    margin-bottom: 1rem;
+}
+
+/* View Raw Data expander */
+.streamlit-expanderHeader {
+    font-size: 16px;
+    padding: 1rem;
+}
+
+/* Download buttons */
+.stDownloadButton button {
+    font-size: 15px;
+}
+
+/* Footer text */
+footer {
+    margin-top: 3rem;
+    padding: 1rem;
+    text-align: center;
+    font-size: 15px;
+}
+
+/* Log display */
+[data-testid="stCode"] {
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* Card-like containers */
+.stTabs [data-baseweb="tab-panel"] {
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-top: 10px;
 }
 
 /* Expander styling */
@@ -125,34 +164,12 @@ st.markdown("""
     padding: 0.5rem;
 }
 
-.stTabs [data-baseweb="tab"] {
-    height: 50px;
-    border-radius: 6px;
-    padding: 0 16px;
-    background-color: #f8f9fa;
-}
-
 .stTabs [data-baseweb="tab"][aria-selected="true"] {
     background-color: #7047EB;
     color: white;
 }
 
-/* Header styling */
-h1 {
-    font-size: 2.2rem !important;
-    font-weight: 700;
-    margin-bottom: 1rem;
-    color: #1f1f1f;
-}
-
 /* Footer styling */
-footer {
-    margin-top: 3rem;
-    padding: 1rem;
-    text-align: center;
-    border-top: 1px solid #eee;
-}
-
 footer a {
     color: #7047EB;
     text-decoration: none;
