@@ -141,19 +141,18 @@ class TokenDetails:
     freeze_authority: Optional[str]
     extensions: Optional[Token2022Extensions] = None
     first_transaction: Optional[str] = None
+    transaction_count: Optional[int] = None
     is_genuine_pump_fun_token: bool = False
     security_review: str = "FAILED"  # Default to FAILED
-    transaction_count: int = 0
 
     def to_dict(self) -> Dict:
-        # First create dict without security_review
+        # First create dict with base fields
         result = {
             'name': self.name,
             'symbol': self.symbol,
             'address': self.address,
             'owner_program': self.owner_program,
-            'freeze_authority': self.freeze_authority,
-            'transaction_count': self.transaction_count
+            'freeze_authority': self.freeze_authority
         }
         
         # Add extensions if they exist
@@ -165,12 +164,15 @@ class TokenDetails:
                 'confidential_transfers': self.extensions.confidential_transfers_authority,
             })
         
-        # Add first transaction and pump verification
-        if self.first_transaction:
-            result['first_transaction'] = self.first_transaction
-        result['is_genuine_pump_fun_token'] = self.is_genuine_pump_fun_token
-        result['security_review'] = self.security_review
+        # Add pump-specific fields only if it's a pump token
+        if self.address.lower().endswith('pump'):
+            if self.first_transaction is not None:
+                result['first_transaction'] = self.first_transaction
+            if self.transaction_count is not None:
+                result['transaction_count'] = self.transaction_count
+            result['is_genuine_pump_fun_token'] = self.is_genuine_pump_fun_token
         
+        result['security_review'] = self.security_review
         return result
 
 @lru_cache(maxsize=100)
@@ -316,8 +318,13 @@ async def get_token_details_async(token_address: str, session: aiohttp.ClientSes
     """Async version of get_token_details with more conservative retry logic"""
     for retry in range(MAX_RETRIES):
         try:
-            # First verify if it's a pump token
-            is_genuine_pump_fun_token, first_transaction, transaction_count = await verify_pump_token(session, token_address)
+            # Only verify pump token if address ends with 'pump'
+            is_genuine_pump_fun_token = False
+            first_transaction = None
+            transaction_count = None
+            
+            if token_address.lower().endswith('pump'):
+                is_genuine_pump_fun_token, first_transaction, transaction_count = await verify_pump_token(session, token_address)
             
             # Add base delay before request
             await sleep(BASE_DELAY)
@@ -354,10 +361,11 @@ async def get_token_details_async(token_address: str, session: aiohttp.ClientSes
                 # Process the token data
                 token_details, owner_program = process_token_data(account_data, token_address)
                 
-                # Update token_details with pump verification and transaction info
-                token_details.is_genuine_pump_fun_token = is_genuine_pump_fun_token
-                token_details.first_transaction = first_transaction
-                token_details.transaction_count = transaction_count
+                # Update token_details with pump verification and transaction info only if it's a pump token
+                if token_address.lower().endswith('pump'):
+                    token_details.is_genuine_pump_fun_token = is_genuine_pump_fun_token
+                    token_details.first_transaction = first_transaction
+                    token_details.transaction_count = transaction_count
 
                 return token_details, owner_program
 
