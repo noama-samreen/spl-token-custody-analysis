@@ -25,14 +25,9 @@ RETRY_DELAY = 2.0  # Additional delay when rate limited
 CONCURRENT_LIMIT = 1  # Back to original value
 SESSION_TIMEOUT = aiohttp.ClientTimeout(total=30)
 
-# Add this constant at the top with other constants
-PUMP_FUN_PROGRAM = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"
-
-# Update the OWNER_LABELS dictionary
 OWNER_LABELS = {
     TOKEN_PROGRAM: "Token Program",
-    TOKEN_2022_PROGRAM: "Token 2022 Program",
-    PUMP_FUN_PROGRAM: "Pump.fun Program"
+    TOKEN_2022_PROGRAM: "Token 2022 Program"
 }
 
 async def get_metadata_account(mint_address: str) -> Tuple[PublicKey, int]:
@@ -145,17 +140,15 @@ class TokenDetails:
     freeze_authority: Optional[str]
     extensions: Optional[Token2022Extensions] = None
     security_review: str = "FAILED"  # Default to FAILED
-    is_pump_fun: bool = False  # Add new field
 
     def to_dict(self) -> Dict:
-        # Create dict with existing fields
+        # First create dict without security_review
         result = {
             'name': self.name,
             'symbol': self.symbol,
             'address': self.address,
             'owner_program': self.owner_program,
-            'freeze_authority': self.freeze_authority,
-            'genuine_pump_fun_token': 'YES' if self.is_pump_fun else 'NO'  # Add new field to output
+            'freeze_authority': self.freeze_authority
         }
         
         # Add extensions if they exist
@@ -176,71 +169,6 @@ class TokenDetails:
 def get_owner_program_label(owner_address: str) -> str:
     """Cached helper function to get the label for owner program"""
     return OWNER_LABELS.get(owner_address, "Unknown Owner")
-
-async def get_token_creator(session: aiohttp.ClientSession, token_address: str) -> Optional[str]:
-    """Get the program that created this token"""
-    try:
-        # Get signatures for the token address
-        payload = {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "getSignaturesForAddress",
-            "params": [
-                token_address,
-                {
-                    "limit": 1000,
-                    "commitment": "confirmed"
-                }
-            ]
-        }
-        
-        async with session.post(SOLANA_RPC_URL, json=payload) as response:
-            if response.status != 200:
-                logging.error(f"Failed to get signatures: {response.status}")
-                return None
-                
-            data = await response.json()
-            if "result" not in data or not data["result"]:
-                logging.error(f"No signatures found for {token_address}")
-                return None
-            
-            # Get the oldest transaction signature (creation transaction)
-            oldest_tx = data["result"][-1]["signature"]
-            
-            # Get the transaction details
-            tx_payload = {
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "getTransaction",
-                "params": [
-                    oldest_tx,
-                    {
-                        "encoding": "jsonParsed",
-                        "maxSupportedTransactionVersion": 0
-                    }
-                ]
-            }
-            
-            async with session.post(SOLANA_RPC_URL, json=tx_payload) as tx_response:
-                tx_data = await tx_response.json()
-                if "result" not in tx_data or not tx_data["result"]:
-                    return None
-                
-                # Look for Pump.fun program interaction in the instructions
-                transaction = tx_data["result"]["transaction"]
-                instructions = transaction["message"]["instructions"]
-                
-                for instruction in instructions:
-                    # Check if any instruction directly interacts with Pump.fun program
-                    if instruction.get("programId") == PUMP_FUN_PROGRAM:
-                        logging.info(f"Found Pump.fun interaction in creation transaction")
-                        return PUMP_FUN_PROGRAM
-                
-                return None
-                
-    except Exception as e:
-        logging.error(f"Error getting token creator: {str(e)}")
-        return None
 
 async def get_token_details_async(token_address: str, session: aiohttp.ClientSession) -> Tuple[TokenDetails, Optional[str]]:
     """Async version of get_token_details with more conservative retry logic"""
@@ -290,12 +218,6 @@ async def get_token_details_async(token_address: str, session: aiohttp.ClientSes
                         token_details.name = metadata["name"]
                         token_details.symbol = metadata["symbol"]
 
-                # If it's a valid token, check if it was created by Pump.fun
-                if owner_program == TOKEN_PROGRAM:
-                    creator = await get_token_creator(session, token_address)
-                    if creator == PUMP_FUN_PROGRAM:
-                        token_details.is_pump_fun = True  # Just set the flag, don't modify security review
-
                 return token_details, owner_program
 
         except aiohttp.ClientError as e:
@@ -310,9 +232,8 @@ async def get_token_details_async(token_address: str, session: aiohttp.ClientSes
 
 def process_token_data(account_data: Dict, token_address: str) -> Tuple[TokenDetails, str]:
     """Process the token data and return structured information"""
-    owner_program = account_data.get('owner', 'N/A')
-    
     # Check if this is a system account
+    owner_program = account_data.get('owner', 'N/A')
     if owner_program == "11111111111111111111111111111111":
         return TokenDetails(
             name="N/A",
@@ -321,17 +242,6 @@ def process_token_data(account_data: Dict, token_address: str) -> Tuple[TokenDet
             owner_program="System Program",
             freeze_authority=None,
             security_review="NOT_A_TOKEN"
-        ), owner_program
-
-    # Check if it's a Pump.fun token
-    if owner_program == PUMP_FUN_PROGRAM:
-        return TokenDetails(
-            name="N/A",
-            symbol="N/A",
-            address=token_address,
-            owner_program=f"{owner_program} (Pump.fun Token)",
-            freeze_authority=None,
-            security_review="PUMP_FUN_TOKEN"
         ), owner_program
 
     # Check if it's a valid token program
