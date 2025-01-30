@@ -257,10 +257,20 @@ async def verify_pump_token(session: aiohttp.ClientSession, token_address: str) 
     metadata = await get_metadata(session, token_address)
     is_pump_authority = metadata and metadata.get("update_authority") == PUMP_UPDATE_AUTHORITY
     
+    # If both conditions are true, it's definitely a genuine pump token
+    if is_pump_address and is_pump_authority:
+        logging.info("Token has both pump suffix and pump authority - Verified as genuine pump.fun token!")
+        return True, None, 0  # We don't need to fetch transaction history in this case
+    
+    # If neither condition is true, it's definitely not a pump token
     if not (is_pump_address or is_pump_authority):
         logging.info("Not a pump token (neither ends with 'pump' nor has pump update authority)")
         return False, None, 0
-
+    
+    # If we reach here, exactly one condition is true (XOR)
+    # We need to verify by checking the first transaction
+    logging.info("One pump condition met - verifying through transaction history...")
+    
     try:
         total_signatures = []
         before = None
@@ -324,7 +334,7 @@ async def verify_pump_token(session: aiohttp.ClientSession, token_address: str) 
                                             if parsed_type == "createAccount":
                                                 owner = instruction["parsed"].get("info", {}).get("owner")
                                                 if owner == PUMP_PROGRAM:
-                                                    logging.info("Verified as genuine pump.fun token!")
+                                                    logging.info("Verified as genuine pump.fun token through transaction history!")
                                                     return True, first_tx_sig, len(total_signatures)
                             break
                     except Exception as e:
