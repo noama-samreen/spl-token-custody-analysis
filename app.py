@@ -97,7 +97,7 @@ st.markdown("""
 
 # Header
 st.title("🔍 Solana Token Custody Risk Analyzer")
-st.markdown("Analyze token details from the Solana blockchain, including Token-2022 program support")
+st.markdown("Analyze details of standard SPL-Token program and Token-2022 program tokens on the Solana blockchain, including tokens from pump.fun.")
 
 # Create tabs
 tab1, tab2 = st.tabs(["Single Token", "Batch Process"])
