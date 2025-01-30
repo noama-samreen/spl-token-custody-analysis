@@ -60,6 +60,7 @@ async def get_metadata(session: aiohttp.ClientSession, mint_address: str) -> Opt
             
             metadata_address, _ = await get_metadata_account(mint_address)
             if not metadata_address:
+                logging.warning(f"Could not derive metadata address for {mint_address}")
                 return None
 
             payload = {
@@ -82,48 +83,67 @@ async def get_metadata(session: aiohttp.ClientSession, mint_address: str) -> Opt
                     return None
                     
                 if response.status != 200:
+                    logging.warning(f"Non-200 status code: {response.status}")
                     return None
                     
                 data = await response.json()
+                if "result" not in data or not data["result"] or not data["result"]["value"]:
+                    logging.warning("No metadata data returned from RPC")
+                    return None
+
+                # Parse the metadata account data
+                account_data = data["result"]["value"]["data"][0]
+                decoded_data = base64.b64decode(account_data)
                 
-            # Parse the metadata account data
-            account_data = data["result"]["value"]["data"][0]
-            decoded_data = base64.b64decode(account_data)
-            
-            if len(decoded_data) < 8:  # Ensure we have enough data
-                return None
+                if len(decoded_data) < 8:  # Ensure we have enough data
+                    logging.warning("Metadata data too short")
+                    return None
+                    
+                try:
+                    # Skip the first byte (discriminator)
+                    offset = 1
+                    
+                    # Skip update authority (32 bytes)
+                    offset += 32
+                    
+                    # Skip mint address (32 bytes)
+                    offset += 32
+                    
+                    # Read name length and name
+                    name_length = int.from_bytes(decoded_data[offset:offset + 4], byteorder='little')
+                    offset += 4
+                    if name_length > 0:
+                        name = decoded_data[offset:offset + name_length].decode('utf-8').rstrip('\x00')
+                    else:
+                        name = "N/A"
+                    offset += name_length
+                    
+                    # Read symbol length and symbol
+                    symbol_length = int.from_bytes(decoded_data[offset:offset + 4], byteorder='little')
+                    offset += 4
+                    if symbol_length > 0:
+                        symbol = decoded_data[offset:offset + symbol_length].decode('utf-8').rstrip('\x00')
+                    else:
+                        symbol = "N/A"
+                    
+                    logging.info(f"Successfully parsed metadata - Name: {name}, Symbol: {symbol}")
+                    return {
+                        "name": name,
+                        "symbol": symbol
+                    }
+                except UnicodeDecodeError as e:
+                    logging.error(f"Error decoding metadata strings: {e}")
+                    return None
+                except Exception as e:
+                    logging.error(f"Error parsing metadata: {e}")
+                    return None
                 
-            try:
-                # Skip the first 1 + 32 + 32 bytes (discriminator + update auth + mint)
-                offset = 1 + 32 + 32
-                
-                # Read name length and name
-                name_length = int.from_bytes(decoded_data[offset:offset + 4], byteorder='little')
-                offset += 4
-                name = decoded_data[offset:offset + name_length].decode('utf-8').rstrip('\x00')
-                offset += name_length
-                
-                # Read symbol length and symbol
-                symbol_length = int.from_bytes(decoded_data[offset:offset + 4], byteorder='little')
-                offset += 4
-                symbol = decoded_data[offset:offset + symbol_length].decode('utf-8').rstrip('\x00')
-                
-                return {
-                    "name": name,
-                    "symbol": symbol
-                }
-            except UnicodeDecodeError:
-                logging.error("Error decoding metadata strings")
-                return None
-            
-            return None
         except Exception as e:
             if retry < MAX_RETRIES - 1:
                 await sleep(RETRY_DELAY * (retry + 1))
                 continue
             logging.error(f"Error fetching metadata: {str(e)}")
             return None
-        
 
 @dataclass
 class Token2022Extensions:
@@ -361,7 +381,18 @@ async def get_token_details_async(token_address: str, session: aiohttp.ClientSes
                 # Process the token data
                 token_details, owner_program = process_token_data(account_data, token_address)
                 
-                # Update token_details with pump verification and transaction info only if it's a pump token
+                # Try to get metadata for all SPL tokens
+                if owner_program == TOKEN_PROGRAM:
+                    logging.info(f"Fetching metadata for token {token_address}")
+                    metadata = await get_metadata(session, token_address)
+                    if metadata:
+                        token_details.name = metadata["name"]
+                        token_details.symbol = metadata["symbol"]
+                        logging.info(f"Updated token details with metadata: {metadata}")
+                    else:
+                        logging.warning("No metadata found or error fetching metadata")
+                
+                # Update pump token specific fields
                 if token_address.lower().endswith('pump'):
                     token_details.is_genuine_pump_fun_token = is_genuine_pump_fun_token
                     token_details.first_transaction = first_transaction
