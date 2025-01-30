@@ -2,7 +2,7 @@ import streamlit as st
 import asyncio
 import aiohttp
 import json
-from spl_token_analysis import get_token_details_async, process_tokens_concurrently
+from spl_token_analysis_v2 import get_token_details_async, process_tokens_concurrently
 from spl_report_generator import create_pdf
 import tempfile
 import os
@@ -38,6 +38,7 @@ st.markdown("""
     border-radius: 8px;
     font-family: monospace;
     white-space: pre-wrap;
+    font-size: 0.85rem;
 }
 .output-container {
     margin: 2rem 0;
@@ -57,6 +58,39 @@ st.markdown("""
     padding: 1rem;
     border-radius: 8px;
     margin: 0.5rem 0;
+}
+
+/* New styles for metrics */
+[data-testid="stMetricValue"] {
+    font-size: 1.8rem !important;
+    font-weight: 600;
+}
+[data-testid="stMetricLabel"] {
+    font-size: 1rem !important;
+    font-weight: 500;
+    color: #555;
+}
+[data-testid="stMetricDelta"] {
+    font-size: 0.9rem !important;
+}
+
+/* Style for long addresses */
+[data-testid="stMetricValue"] div {
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem !important;
+    word-break: break-all;
+    line-height: 1.2;
+}
+
+/* Adjust overall container padding */
+.element-container {
+    padding: 0.5rem 0;
+}
+
+/* Style JSON display */
+.stJson {
+    font-size: 0.85rem !important;
+    line-height: 1.4;
 }
 </style>
 """, unsafe_allow_html=True)
