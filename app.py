@@ -21,160 +21,89 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS - Enhanced for better layout and visual hierarchy
+# Custom CSS
 st.markdown("""
 <style>
-/* Base styles */
 .main {
     padding: 2rem;
-    max-width: 1200px;
-    margin: 0 auto;
-    background-color: #f9fafb;
 }
-
-/* Card styling */
-.metric-card {
-    background: white;
-    padding: 1.5rem;
-    border-radius: 12px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    margin-bottom: 1.5rem;
-    border: 1px solid #edf2f7;
-}
-
-/* Input field enhancement */
-[data-testid="stTextInput"] input {
-    border-radius: 8px;
-    border: 2px solid #e2e8f0;
-    padding: 0.75rem;
-    font-size: 1rem;
-    width: 100%;
-    background-color: white;
-    transition: border-color 0.2s ease;
-}
-
-[data-testid="stTextInput"] input:focus {
-    border-color: #7047EB;
-    box-shadow: 0 0 0 3px rgba(112, 71, 235, 0.1);
-}
-
-/* Button refinements */
 .stButton>button {
     width: 100%;
     background-color: #7047EB;
     color: white;
     border-radius: 8px;
-    padding: 0.75rem 1.5rem;
-    font-weight: 600;
-    border: none;
-    transition: all 0.2s ease;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+    margin: 1rem 0;
 }
-
 .stButton>button:hover {
     background-color: #5835c4;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(112, 71, 235, 0.15);
 }
-
-/* Metric value improvements */
-[data-testid="stMetricValue"] {
-    font-size: 1.6rem !important;
-    font-weight: 700;
-    color: #1a202c;
-    background: linear-gradient(135deg, #7047EB, #5835c4);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
-[data-testid="stMetricLabel"] {
-    font-size: 0.85rem !important;
-    font-weight: 600;
-    color: #4a5568;
-    text-transform: uppercase;
-    letter-spacing: 0.7px;
-}
-
-/* Tab enhancements */
-.stTabs [data-baseweb="tab"] {
-    height: 48px;
+.json-output {
+    background-color: #f8f9fa;
+    padding: 1rem;
     border-radius: 8px;
-    padding: 0 24px;
-    font-weight: 600;
-    font-size: 0.95rem;
-    transition: all 0.2s ease;
+    font-family: monospace;
+    white-space: pre-wrap;
+    font-size: 0.85rem;
 }
-
-.stTabs [data-baseweb="tab"][aria-selected="true"] {
-    background-color: #7047EB;
-    color: white;
-    box-shadow: 0 4px 12px rgba(112, 71, 235, 0.15);
+.output-container {
+    margin: 2rem 0;
+    padding: 1rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
 }
-
-/* Header and title improvements */
-.header {
+.header-container {
     text-align: center;
     padding: 2rem 0;
-    margin-bottom: 2rem;
-    background: linear-gradient(135deg, #f8f9fa, #ffffff);
-    border-radius: 12px;
 }
-
-h1 {
-    font-size: 2.5rem !important;
-    font-weight: 800;
-    background: linear-gradient(135deg, #7047EB, #5835c4);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    margin-bottom: 1rem;
+.stProgress > div > div > div {
+    background-color: #7047EB;
 }
-
-/* Expander refinements */
-.streamlit-expanderHeader {
-    background-color: white;
-    border-radius: 8px;
-    border: 1px solid #edf2f7;
+.metric-container {
+    background-color: #f8f9fa;
     padding: 1rem;
+    border-radius: 8px;
+    margin: 0.5rem 0;
+}
+
+/* New styles for metrics */
+[data-testid="stMetricValue"] {
+    font-size: 1.8rem !important;
     font-weight: 600;
 }
-
-/* Download buttons container */
-.download-container {
-    display: flex;
-    gap: 1rem;
-    margin-top: 2rem;
+[data-testid="stMetricLabel"] {
+    font-size: 1rem !important;
+    font-weight: 500;
+    color: #555;
+}
+[data-testid="stMetricDelta"] {
+    font-size: 0.9rem !important;
 }
 
-/* Footer enhancement */
-footer {
-    margin-top: 4rem;
-    padding: 2rem;
-    text-align: center;
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 -2px 4px rgba(0,0,0,0.05);
+/* Style for long addresses */
+[data-testid="stMetricValue"] div {
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem !important;
+    word-break: break-all;
+    line-height: 1.2;
 }
 
-footer a {
-    color: #7047EB;
-    text-decoration: none;
-    font-weight: 600;
-    transition: color 0.2s ease;
+/* Adjust overall container padding */
+.element-container {
+    padding: 0.5rem 0;
 }
 
-footer a:hover {
-    color: #5835c4;
+/* Style JSON display */
+.stJson {
+    font-size: 0.85rem !important;
+    line-height: 1.4;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# Update the header section
-st.markdown("<div class='header'>", unsafe_allow_html=True)
+# Header
 st.title("🔍 Solana Token Custody Risk Analyzer")
 st.markdown("Analyze token details from the Solana blockchain, including Token-2022 program support")
-st.markdown("</div>", unsafe_allow_html=True)
 
 # Create tabs
 tab1, tab2 = st.tabs(["Single Token", "Batch Process"])
@@ -366,12 +295,11 @@ with tab2:
                         mime="application/zip"
                     )
 
-# Update the footer section
+# Footer
+st.markdown("---")
 st.markdown("""
-<footer>
-    <div style='color: #666;'>
-        Noama Samreen | 
-        <a href='https://github.com/noama-samreen/spl-token-custody-analysis' target='_blank' style='color: #7047EB; text-decoration: none;'>GitHub</a>
-    </div>
-</footer>
+<div style='text-align: center; color: #666;'>
+    Noama Samreen | 
+    <a href='https://github.com/noama-samreen/spl-token-custody-analysis' target='_blank'>GitHub</a>
+</div>
 """, unsafe_allow_html=True) 
