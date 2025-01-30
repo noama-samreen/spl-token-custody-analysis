@@ -21,98 +21,89 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS - Minimal, clean design
+# Custom CSS
 st.markdown("""
 <style>
-/* Clean, minimal base styles */
 .main {
-    max-width: 1000px;
-    margin: 0 auto;
-    padding: 1rem;
+    padding: 2rem;
 }
-
-/* Simple input field */
-[data-testid="stTextInput"] input {
-    border: 1px solid #e0e0e0;
-    border-radius: 4px;
-    padding: 8px 12px;
-    font-size: 14px;
-    width: 100%;
-}
-
-/* Clean button style */
 .stButton>button {
-    background-color: #000;
+    width: 100%;
+    background-color: #7047EB;
     color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 8px 16px;
-    font-size: 14px;
-    cursor: pointer;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    margin: 1rem 0;
 }
-
 .stButton>button:hover {
-    background-color: #333;
+    background-color: #5835c4;
 }
-
-/* Metric containers */
-[data-testid="stMetricValue"] {
-    font-size: 24px !important;
-    font-weight: 500;
-    color: #000;
-}
-
-[data-testid="stMetricLabel"] {
-    font-size: 14px !important;
-    color: #666;
-}
-
-/* Tab styling */
-.stTabs [data-baseweb="tab"] {
-    font-size: 14px;
-    padding: 8px 16px;
-}
-
-.stTabs [data-baseweb="tab"][aria-selected="true"] {
-    background-color: #000;
-    color: white;
-}
-
-/* Header */
-h1 {
-    font-size: 28px !important;
-    font-weight: 500;
-    margin-bottom: 1rem;
-}
-
-/* Clean expander */
-.streamlit-expanderHeader {
-    background-color: white;
-    border: 1px solid #e0e0e0;
-    border-radius: 4px;
-}
-
-/* Footer */
-footer {
-    margin-top: 2rem;
+.json-output {
+    background-color: #f8f9fa;
     padding: 1rem;
+    border-radius: 8px;
+    font-family: monospace;
+    white-space: pre-wrap;
+    font-size: 0.85rem;
+}
+.output-container {
+    margin: 2rem 0;
+    padding: 1rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+}
+.header-container {
     text-align: center;
-    font-size: 14px;
-    color: #666;
+    padding: 2rem 0;
+}
+.stProgress > div > div > div {
+    background-color: #7047EB;
+}
+.metric-container {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+    margin: 0.5rem 0;
 }
 
-footer a {
-    color: #000;
-    text-decoration: none;
+/* New styles for metrics */
+[data-testid="stMetricValue"] {
+    font-size: 1.8rem !important;
+    font-weight: 600;
+}
+[data-testid="stMetricLabel"] {
+    font-size: 1rem !important;
+    font-weight: 500;
+    color: #555;
+}
+[data-testid="stMetricDelta"] {
+    font-size: 0.9rem !important;
+}
+
+/* Style for long addresses */
+[data-testid="stMetricValue"] div {
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem !important;
+    word-break: break-all;
+    line-height: 1.2;
+}
+
+/* Adjust overall container padding */
+.element-container {
+    padding: 0.5rem 0;
+}
+
+/* Style JSON display */
+.stJson {
+    font-size: 0.85rem !important;
+    line-height: 1.4;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# Update the header section
-st.markdown("<div class='header'>", unsafe_allow_html=True)
+# Header
 st.title("🔍 Solana Token Custody Risk Analyzer")
 st.markdown("Analyze token details from the Solana blockchain, including Token-2022 program support")
-st.markdown("</div>", unsafe_allow_html=True)
 
 # Create tabs
 tab1, tab2 = st.tabs(["Single Token", "Batch Process"])
@@ -304,12 +295,11 @@ with tab2:
                         mime="application/zip"
                     )
 
-# Update the footer section
+# Footer
+st.markdown("---")
 st.markdown("""
-<footer>
-    <div style='color: #666;'>
-        Noama Samreen | 
-        <a href='https://github.com/noama-samreen/spl-token-custody-analysis' target='_blank' style='color: #7047EB; text-decoration: none;'>GitHub</a>
-    </div>
-</footer>
+<div style='text-align: center; color: #666;'>
+    Noama Samreen | 
+    <a href='https://github.com/noama-samreen/spl-token-custody-analysis' target='_blank'>GitHub</a>
+</div>
 """, unsafe_allow_html=True) 
