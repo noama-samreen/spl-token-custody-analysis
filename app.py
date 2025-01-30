@@ -90,12 +90,19 @@ with tab1:
                     # Convert TokenDetails to dictionary
                     result_dict = result.to_dict()
                     
-                    # Display key metrics
+                    # Display key metrics in columns
                     col1, col2 = st.columns(2)
                     with col1:
                         st.metric("Security Review", result_dict.get('security_review', 'N/A'))
                     with col2:
                         st.metric("Token Program", "Token-2022" if "Token 2022" in result_dict.get('owner_program', '') else "SPL Token")
+                    
+                    # Display authorities in columns
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.metric("Update Authority", result_dict.get('update_authority', 'None'))
+                    with col2:
+                        st.metric("Freeze Authority", result_dict.get('freeze_authority', 'None'))
                     
                     # If it's a pump token, show additional metrics
                     if token_address.lower().endswith('pump'):
@@ -103,7 +110,7 @@ with tab1:
                         with col1:
                             st.metric("Transaction Count", result_dict.get('transaction_count', 'N/A'))
                         with col2:
-                            st.metric("Genuine Pump.fun Token", "Yes" if result_dict.get('is_genuine_pump_fun_token', False) else "No")
+                            st.metric("Genuine Pump Token", "Yes" if result_dict.get('is_genuine_pump_fun_token', False) else "No")
                     
                     # Display full results
                     st.json(result_dict)
@@ -173,12 +180,13 @@ with tab2:
                     )
                 
                 with col2:
-                    # Create CSV
-                    csv_data = "address,name,symbol,owner_program,security_review\n"
+                    # Create CSV with update authority
+                    csv_data = "address,name,symbol,owner_program,update_authority,freeze_authority,security_review\n"
                     for r in results:
                         if r['status'] == 'success':
                             csv_data += f"{r['address']},{r.get('name', 'N/A')},{r.get('symbol', 'N/A')},"
-                            csv_data += f"{r.get('owner_program', 'N/A')},{r.get('security_review', 'N/A')}\n"
+                            csv_data += f"{r.get('owner_program', 'N/A')},{r.get('update_authority', 'None')},"
+                            csv_data += f"{r.get('freeze_authority', 'None')},{r.get('security_review', 'N/A')}\n"
                     
                     st.download_button(
                         "Download CSV",
