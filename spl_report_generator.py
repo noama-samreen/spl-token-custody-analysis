@@ -1,4 +1,4 @@
-import os
+=import os
 import json
 from datetime import datetime
 from reportlab.lib import colors
@@ -133,8 +133,7 @@ def create_pdf(token_data, output_dir):
         [Paragraph("Profile", cell_style), Paragraph(profile, cell_style)],
         [Paragraph("Review Date", cell_style), Paragraph(current_date, cell_style)],
         [Paragraph("Network", cell_style), Paragraph("Solana", cell_style)],
-        [Paragraph("Address", cell_style), Paragraph(token_data['address'], cell_style)],
-        [Paragraph("Transaction Count", cell_style), Paragraph(str(token_data.get('transaction_count', 'N/A')), cell_style)]
+        [Paragraph("Address", cell_style), Paragraph(token_data['address'], cell_style)]
     ]
     
     elements.append(create_basic_table(data, cell_style))
@@ -178,9 +177,12 @@ trusted Token Program"""
         'permanent_delegate',
         'transaction_fees',
         'transfer_hook',
-        'confidential_transfers',
-        'first_transaction'  # Added first transaction to the field order
+        'confidential_transfers'
     ]
+    
+    # Add pump-specific fields if it's a pump token
+    if token_data.get('is_genuine_pump_fun_token', False):
+        field_order.extend(['first_transaction', 'transaction_count'])
     
     # Define program name mapping
     PROGRAM_NAMES = {
