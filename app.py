@@ -62,7 +62,7 @@ st.markdown("""
 
 /* New styles for metrics */
 [data-testid="stMetricValue"] {
-    font-size: 1.8rem !important;
+    font-size: 1.9rem !important;
     font-weight: 600;
 }
 [data-testid="stMetricLabel"] {
