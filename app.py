@@ -27,172 +27,89 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS - Smaller fonts and better alignment
+# Custom CSS
 st.markdown("""
 <style>
-/* Base styles */
 .main {
-    padding: 1rem;
-    max-width: 1200px;
-    margin: 0 auto;
+    padding: 2rem;
 }
-
-/* Title and description */
-h1 {
-    font-size: 16px !important;
-    font-weight: 500;
-    margin-bottom: 0.5rem;
-}
-
-.stMarkdown p {
-    font-size: 14px !important;
-    margin-bottom: 1.5rem;
-}
-
-/* Input section */
-[data-testid="stTextInput"] label {
-    font-size: 14px !important;
-    color: #424242;
-    margin-bottom: 0.25rem;
-}
-
-[data-testid="stTextInput"] input {
-    border-radius: 6px;
-    border: 1px solid #ddd;
-    padding: 0.5rem;
-    font-size: 13px;
-}
-
-/* Button styling */
 .stButton>button {
+    width: 100%;
     background-color: #7047EB;
     color: white;
-    border-radius: 6px;
+    border-radius: 8px;
     padding: 0.5rem 1rem;
-    border: none;
-    transition: all 0.3s ease;
-    font-size: 14px;
-}
-
-/* Results section */
-[data-testid="stMarkdownContainer"] h3 {
-    font-size: 12px !important;
-    color: #666;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 0.25rem;
-}
-
-[data-testid="stMarkdownContainer"] p {
-    font-size: 14px !important;
-    color: #1f1f1f;
-    font-weight: 500;
-    margin-bottom: 1rem;
-}
-
-/* Tab styling */
-.stTabs [data-baseweb="tab"] {
-    height: 40px;
-    border-radius: 6px;
-    padding: 0 16px;
-    font-size: 14px;
-    background-color: #f8f9fa;
-}
-
-/* View Raw Data expander */
-.streamlit-expanderHeader {
-    font-size: 14px;
-    padding: 0.75rem;
-}
-
-/* Download buttons */
-.stDownloadButton button {
-    font-size: 13px;
-    padding: 0.5rem 1rem;
-}
-
-/* Footer text */
-footer {
-    margin-top: 2rem;
-    padding: 0.75rem;
-    text-align: center;
-    font-size: 13px;
-}
-
-/* Grid layout for results */
-.results-container {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
     margin: 1rem 0;
 }
-
-/* Log display */
-[data-testid="stCode"] {
-    font-size: 13px;
-    line-height: 1.4;
-    padding: 0.75rem;
+.stButton>button:hover {
+    background-color: #5835c4;
 }
-
-/* Container padding and spacing */
-[data-testid="stVerticalBlock"] > [data-testid="stVerticalBlock"] {
-    padding-top: 0.5rem;
-    padding-bottom: 0.5rem;
+.json-output {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+    font-family: monospace;
+    white-space: pre-wrap;
+    font-size: 0.85rem;
 }
-
-/* Progress bar */
+.output-container {
+    margin: 2rem 0;
+    padding: 1rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+}
+.header-container {
+    text-align: center;
+    padding: 2rem 0;
+}
 .stProgress > div > div > div {
     background-color: #7047EB;
 }
-
-/* Tab styling */
-.stTabs [data-baseweb="tab-list"] {
-    gap: 8px;
-    padding: 0.5rem;
+.metric-container {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+    margin: 0.5rem 0;
 }
 
-.stTabs [data-baseweb="tab"][aria-selected="true"] {
-    background-color: #7047EB;
-    color: white;
-}
-
-/* Footer styling */
-footer a {
-    color: #7047EB;
-    text-decoration: none;
+/* New styles for metrics */
+[data-testid="stMetricValue"] {
+    font-size: 1.8rem !important;
     font-weight: 600;
 }
-
-footer a:hover {
-    color: #5835c4;
+[data-testid="stMetricLabel"] {
+    font-size: 1rem !important;
+    font-weight: 500;
+    color: #555;
+}
+[data-testid="stMetricDelta"] {
+    font-size: 0.9rem !important;
 }
 
-/* Scrollbar styling */
-[data-testid="stCode"]::-webkit-scrollbar {
-    width: 8px;
+/* Style for long addresses */
+[data-testid="stMetricValue"] div {
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem !important;
+    word-break: break-all;
+    line-height: 1.2;
 }
 
-[data-testid="stCode"]::-webkit-scrollbar-track {
-    background: #f1f1f1;
+/* Adjust overall container padding */
+.element-container {
+    padding: 0.5rem 0;
 }
 
-[data-testid="stCode"]::-webkit-scrollbar-thumb {
-    background: #7047EB;
-    border-radius: 4px;
-}
-
-[data-testid="stCode"]::-webkit-scrollbar-thumb:hover {
-    background: #5835c4;
+/* Style JSON display */
+.stJson {
+    font-size: 0.85rem !important;
+    line-height: 1.4;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# Update the header section
-st.markdown("<div class='header'>", unsafe_allow_html=True)
+# Header
 st.title("🔍 Solana Token Custody Risk Analyzer")
-st.markdown("Analyze token details from the Solana blockchain, including Token-2022 program support")
-st.markdown("</div>", unsafe_allow_html=True)
+st.markdown("Analyze details of SPL-Tokens and Token-2022 assets on the Solana blockchain, including tokens from pump.fun.")
 
 # Create tabs
 tab1, tab2 = st.tabs(["Single Token", "Batch Process"])
