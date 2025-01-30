@@ -171,15 +171,21 @@ trusted Token Program"""
     # Additional details table with error handling
     additional_data = [["Field", "Value"]]
     
+    # Base fields for all tokens
     field_order = [
         'owner_program',
         'freeze_authority',
-        'update_authority',
-        'permanent_delegate',
-        'transaction_fees',
-        'transfer_hook',
-        'confidential_transfers'
+        'update_authority'
     ]
+    
+    # Add Token 2022 specific fields only if it's a Token 2022 program
+    if "Token 2022" in token_data.get('owner_program', ''):
+        field_order.extend([
+            'permanent_delegate',
+            'transaction_fees',
+            'transfer_hook',
+            'confidential_transfers'
+        ])
     
     # Add transaction-specific fields only if they exist
     if token_data.get('first_transaction'):
