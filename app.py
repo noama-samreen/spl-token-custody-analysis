@@ -7,12 +7,18 @@ from spl_report_generator import create_pdf
 import tempfile
 import os
 import zipfile
+from datetime import datetime
+import time
 
 # Initialize session state if not already done
 if 'analysis_results' not in st.session_state:
     st.session_state.analysis_results = None
 if 'batch_results' not in st.session_state:
     st.session_state.batch_results = None
+if 'logs' not in st.session_state:
+    st.session_state.logs = []
+if 'start_time' not in st.session_state:
+    st.session_state.start_time = None
 
 # Page config
 st.set_page_config(
@@ -21,89 +27,130 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS
+# Custom CSS - Minimal, clean design
 st.markdown("""
 <style>
+/* Clean, minimal base styles */
 .main {
-    padding: 2rem;
-}
-.stButton>button {
-    width: 100%;
-    background-color: #7047EB;
-    color: white;
-    border-radius: 8px;
-    padding: 0.5rem 1rem;
-    margin: 1rem 0;
-}
-.stButton>button:hover {
-    background-color: #5835c4;
-}
-.json-output {
-    background-color: #f8f9fa;
+    max-width: 1000px;
+    margin: 0 auto;
     padding: 1rem;
-    border-radius: 8px;
-    font-family: monospace;
-    white-space: pre-wrap;
-    font-size: 0.85rem;
 }
-.output-container {
-    margin: 2rem 0;
-    padding: 1rem;
+
+/* Simple input field */
+[data-testid="stTextInput"] input {
     border: 1px solid #e0e0e0;
-    border-radius: 8px;
-}
-.header-container {
-    text-align: center;
-    padding: 2rem 0;
-}
-.stProgress > div > div > div {
-    background-color: #7047EB;
-}
-.metric-container {
-    background-color: #f8f9fa;
-    padding: 1rem;
-    border-radius: 8px;
-    margin: 0.5rem 0;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 14px;
+    width: 100%;
 }
 
-/* New styles for metrics */
+/* Clean button style */
+.stButton>button {
+    background-color: #000;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 16px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.stButton>button:hover {
+    background-color: #333;
+}
+
+/* Metric containers */
 [data-testid="stMetricValue"] {
-    font-size: 1.8rem !important;
-    font-weight: 600;
-}
-[data-testid="stMetricLabel"] {
-    font-size: 1rem !important;
+    font-size: 24px !important;
     font-weight: 500;
-    color: #555;
-}
-[data-testid="stMetricDelta"] {
-    font-size: 0.9rem !important;
+    color: #000;
 }
 
-/* Style for long addresses */
-[data-testid="stMetricValue"] div {
-    font-family: 'Courier New', monospace;
-    font-size: 0.85rem !important;
-    word-break: break-all;
-    line-height: 1.2;
+[data-testid="stMetricLabel"] {
+    font-size: 14px !important;
+    color: #666;
 }
 
-/* Adjust overall container padding */
-.element-container {
-    padding: 0.5rem 0;
+/* Tab styling */
+.stTabs [data-baseweb="tab"] {
+    font-size: 14px;
+    padding: 8px 16px;
 }
 
-/* Style JSON display */
-.stJson {
-    font-size: 0.85rem !important;
-    line-height: 1.4;
+.stTabs [data-baseweb="tab"][aria-selected="true"] {
+    background-color: #000;
+    color: white;
+}
+
+/* Header */
+h1 {
+    font-size: 28px !important;
+    font-weight: 500;
+    margin-bottom: 1rem;
+}
+
+/* Clean expander */
+.streamlit-expanderHeader {
+    background-color: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+}
+
+/* Footer */
+footer {
+    margin-top: 2rem;
+    padding: 1rem;
+    text-align: center;
+    font-size: 14px;
+    color: #666;
+}
+
+footer a {
+    color: #000;
+    text-decoration: none;
+}
+
+/* Log display styling */
+[data-testid="stCode"] {
+    white-space: pre-wrap;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    height: 300px;
+    overflow-y: auto;
+}
+
+/* Scrollbar styling */
+[data-testid="stCode"]::-webkit-scrollbar {
+    width: 8px;
+}
+
+[data-testid="stCode"]::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+[data-testid="stCode"]::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+[data-testid="stCode"]::-webkit-scrollbar-thumb:hover {
+    background: #555;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# Header
+# Update the header section
+st.markdown("<div class='header'>", unsafe_allow_html=True)
 st.title("🔍 Solana Token Custody Risk Analyzer")
-st.markdown("Analyze details of SPL-Tokens and Token-2022 assets on the Solana blockchain, including tokens from pump.fun.")
+st.markdown("Analyze details of SPL tokens and Token-2022 assets on the Solana blockchain, including tokens from pump.fun.")
+st.markdown("</div>", unsafe_allow_html=True)
 
 # Create tabs
 tab1, tab2 = st.tabs(["Single Token", "Batch Process"])
@@ -123,8 +170,15 @@ with tab1:
     if analyze_button and token_address:
         with st.spinner("Analyzing token..."):
             async def get_token():
+                start_timer()
+                add_log(f"Starting analysis for token: {token_address[:8]}...")
+                add_log("Fetching token data from blockchain...")
                 async with aiohttp.ClientSession() as session:
                     details, _ = await get_token_details_async(token_address, session)
+                    add_log("Analyzing security parameters...")
+                    # More processing
+                    add_log("✅ Analysis complete!")
+                    display_logs()
                     return details
             
             try:
@@ -232,12 +286,16 @@ with tab2:
             status_text = st.empty()
             
             async def process_batch():
+                start_timer()
+                add_log("Starting batch processing...")
                 async with aiohttp.ClientSession() as session:
                     results = await process_tokens_concurrently(addresses, session)
                     for i, _ in enumerate(results, 1):
                         progress = i / len(addresses)
                         progress_bar.progress(progress)
                         status_text.text(f"Processed {i}/{len(addresses)} tokens")
+                    add_log("Batch processing completed!")
+                    display_logs()
                     return results
             
             try:
@@ -295,11 +353,38 @@ with tab2:
                         mime="application/zip"
                     )
 
-# Footer
-st.markdown("---")
+# Update the footer section
 st.markdown("""
-<div style='text-align: center; color: #666;'>
-    Noama Samreen | 
-    <a href='https://github.com/noama-samreen/spl-token-custody-analysis' target='_blank'>GitHub</a>
-</div>
-""", unsafe_allow_html=True) 
+<footer>
+    <div style='color: #666;'>
+        Noama Samreen | 
+        <a href='https://github.com/noama-samreen/spl-token-custody-analysis' target='_blank' style='color: #7047EB; text-decoration: none;'>GitHub</a>
+    </div>
+</footer>
+""", unsafe_allow_html=True)
+
+def start_timer():
+    """Start the execution timer"""
+    st.session_state.start_time = time.time()
+    st.session_state.logs = []  # Clear previous logs
+    add_log("Starting execution...")
+
+def get_elapsed_time():
+    """Get elapsed time since start"""
+    if st.session_state.start_time:
+        elapsed = time.time() - st.session_state.start_time
+        return f"{elapsed:.2f} seconds"
+    return "Not started"
+
+def add_log(message):
+    """Add a log message with timestamp and elapsed time"""
+    timestamp = datetime.now().strftime("%H:%M:%S")
+    elapsed = get_elapsed_time()
+    st.session_state.logs.append(f"[{timestamp}] ({elapsed}) {message}")
+
+def display_logs():
+    """Display all logs and total time in the placeholder"""
+    log_text = "\n".join(st.session_state.logs)
+    if st.session_state.start_time:
+        log_text += f"\n\n{'='*50}\nTotal execution time: {get_elapsed_time()}"
+    st.empty().code(log_text, language=None) 
