@@ -248,11 +248,17 @@ async def get_signatures_batch(session: aiohttp.ClientSession, address: str, bef
 async def verify_pump_token(session: aiohttp.ClientSession, token_address: str) -> Tuple[bool, Optional[str], int]:
     """Verify if token is a genuine pump.fun token by checking its first transaction"""
     PUMP_PROGRAM = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"
+    PUMP_UPDATE_AUTHORITY = "TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM"
     
     logging.info(f"Starting pump token verification for {token_address}")
     
-    if not token_address.lower().endswith('pump'):
-        logging.info("Not a pump token (doesn't end with 'pump')")
+    # Check if it's a pump token by address suffix or update authority
+    is_pump_address = token_address.lower().endswith('pump')
+    metadata = await get_metadata(session, token_address)
+    is_pump_authority = metadata and metadata.get("update_authority") == PUMP_UPDATE_AUTHORITY
+    
+    if not (is_pump_address or is_pump_authority):
+        logging.info("Not a pump token (neither ends with 'pump' nor has pump update authority)")
         return False, None, 0
 
     try:
@@ -342,12 +348,18 @@ async def get_token_details_async(token_address: str, session: aiohttp.ClientSes
     """Async version of get_token_details with more conservative retry logic"""
     for retry in range(MAX_RETRIES):
         try:
-            # Only verify pump token if address ends with 'pump'
+            # First get metadata to check update authority
+            metadata = await get_metadata(session, token_address)
+            is_pump_address = token_address.lower().endswith('pump')
+            is_pump_authority = metadata and metadata.get("update_authority") == "TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM"
+            
+            # Verify pump token if either condition is met
             is_genuine_pump_fun_token = False
             first_transaction = None
             transaction_count = None
             
-            if token_address.lower().endswith('pump'):
+            if is_pump_address or is_pump_authority:
+                logging.info(f"Potential pump token detected - Address ends with 'pump': {is_pump_address}, Has pump authority: {is_pump_authority}")
                 is_genuine_pump_fun_token, first_transaction, transaction_count = await verify_pump_token(session, token_address)
             
             # Add base delay before request
@@ -385,23 +397,19 @@ async def get_token_details_async(token_address: str, session: aiohttp.ClientSes
                 # Process the token data
                 token_details, owner_program = process_token_data(account_data, token_address)
                 
-                # Try to get metadata for all SPL tokens
-                if owner_program == TOKEN_PROGRAM:
-                    logging.info(f"Fetching metadata for token {token_address}")
-                    metadata = await get_metadata(session, token_address)
-                    if metadata:
-                        token_details.name = metadata["name"]
-                        token_details.symbol = metadata["symbol"]
-                        token_details.update_authority = metadata["update_authority"]
-                        logging.info(f"Updated token details with metadata: {metadata}")
-                    else:
-                        logging.warning("No metadata found or error fetching metadata")
+                # Update token details with metadata if available
+                if owner_program == TOKEN_PROGRAM and metadata:
+                    token_details.name = metadata["name"]
+                    token_details.symbol = metadata["symbol"]
+                    token_details.update_authority = metadata["update_authority"]
+                    logging.info(f"Updated token details with metadata: {metadata}")
                 
-                # Update pump token specific fields
-                if token_address.lower().endswith('pump'):
+                # Update pump verification details if either condition was met
+                if is_pump_address or is_pump_authority:
                     token_details.is_genuine_pump_fun_token = is_genuine_pump_fun_token
                     token_details.first_transaction = first_transaction
                     token_details.transaction_count = transaction_count
+                    logging.info(f"Updated pump verification details - Genuine: {is_genuine_pump_fun_token}, Tx count: {transaction_count}")
 
                 return token_details, owner_program
 
