@@ -21,123 +21,151 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS - Updated for cleaner layout
+# Custom CSS - Enhanced for better layout and visual hierarchy
 st.markdown("""
 <style>
 /* Base styles */
 .main {
-    padding: 1.5rem;
+    padding: 2rem;
     max-width: 1200px;
     margin: 0 auto;
+    background-color: #f9fafb;
 }
 
-/* Card-like containers */
-.stTabs [data-baseweb="tab-panel"] {
+/* Card styling */
+.metric-card {
     background: white;
-    padding: 25px;
-    border-radius: 10px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    margin-top: 10px;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    margin-bottom: 1.5rem;
+    border: 1px solid #edf2f7;
 }
 
-/* Button styling */
+/* Input field enhancement */
+[data-testid="stTextInput"] input {
+    border-radius: 8px;
+    border: 2px solid #e2e8f0;
+    padding: 0.75rem;
+    font-size: 1rem;
+    width: 100%;
+    background-color: white;
+    transition: border-color 0.2s ease;
+}
+
+[data-testid="stTextInput"] input:focus {
+    border-color: #7047EB;
+    box-shadow: 0 0 0 3px rgba(112, 71, 235, 0.1);
+}
+
+/* Button refinements */
 .stButton>button {
     width: 100%;
     background-color: #7047EB;
     color: white;
-    border-radius: 6px;
-    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
     border: none;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 0.9rem;
 }
+
 .stButton>button:hover {
     background-color: #5835c4;
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(112, 71, 235, 0.15);
 }
 
-/* Metrics styling */
-.metric-container {
-    background-color: white;
-    padding: 1.2rem;
-    border-radius: 8px;
-    border: 1px solid #eee;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
+/* Metric value improvements */
 [data-testid="stMetricValue"] {
-    font-size: 1.4rem !important;
-    font-weight: 600;
-    color: #1f1f1f;
+    font-size: 1.6rem !important;
+    font-weight: 700;
+    color: #1a202c;
+    background: linear-gradient(135deg, #7047EB, #5835c4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
 [data-testid="stMetricLabel"] {
-    font-size: 0.9rem !important;
-    font-weight: 500;
-    color: #666;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-/* Input fields */
-[data-testid="stTextInput"] input {
-    border-radius: 6px;
-    border: 1px solid #ddd;
-    padding: 0.5rem;
-}
-
-/* Expander styling */
-.streamlit-expanderHeader {
-    background-color: white;
-    border-radius: 6px;
-    border: 1px solid #eee;
-}
-
-/* JSON output */
-.stJson {
-    background-color: #f8f9fa;
-    padding: 1rem;
-    border-radius: 6px;
     font-size: 0.85rem !important;
-    border: 1px solid #eee;
+    font-weight: 600;
+    color: #4a5568;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
 }
 
-/* Progress bar */
-.stProgress > div > div > div {
-    background-color: #7047EB;
-}
-
-/* Tab styling */
-.stTabs [data-baseweb="tab-list"] {
-    gap: 8px;
-    padding: 0.5rem;
-}
-
+/* Tab enhancements */
 .stTabs [data-baseweb="tab"] {
-    height: 50px;
-    border-radius: 6px;
-    padding: 0 16px;
-    background-color: #f8f9fa;
+    height: 48px;
+    border-radius: 8px;
+    padding: 0 24px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
 }
 
 .stTabs [data-baseweb="tab"][aria-selected="true"] {
     background-color: #7047EB;
     color: white;
+    box-shadow: 0 4px 12px rgba(112, 71, 235, 0.15);
 }
 
-/* Header styling */
-h1 {
-    font-size: 2.2rem !important;
-    font-weight: 700;
-    margin-bottom: 1rem;
-    color: #1f1f1f;
-}
-
-/* Footer styling */
-footer {
-    margin-top: 3rem;
-    padding: 1rem;
+/* Header and title improvements */
+.header {
     text-align: center;
-    border-top: 1px solid #eee;
+    padding: 2rem 0;
+    margin-bottom: 2rem;
+    background: linear-gradient(135deg, #f8f9fa, #ffffff);
+    border-radius: 12px;
+}
+
+h1 {
+    font-size: 2.5rem !important;
+    font-weight: 800;
+    background: linear-gradient(135deg, #7047EB, #5835c4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 1rem;
+}
+
+/* Expander refinements */
+.streamlit-expanderHeader {
+    background-color: white;
+    border-radius: 8px;
+    border: 1px solid #edf2f7;
+    padding: 1rem;
+    font-weight: 600;
+}
+
+/* Download buttons container */
+.download-container {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+/* Footer enhancement */
+footer {
+    margin-top: 4rem;
+    padding: 2rem;
+    text-align: center;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 -2px 4px rgba(0,0,0,0.05);
+}
+
+footer a {
+    color: #7047EB;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.2s ease;
+}
+
+footer a:hover {
+    color: #5835c4;
 }
 </style>
 """, unsafe_allow_html=True)
