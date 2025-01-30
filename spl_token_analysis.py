@@ -284,7 +284,7 @@ async def verify_pump_token(session: aiohttp.ClientSession, token_address: str, 
                 
                 # Check each transaction for Pump.fun interaction
                 for sig_info in signatures:
-                    logging.info(f"Checking transaction: {sig_info['signature']}")
+                    #logging.info(f"Checking transaction: {sig_info['signature']}")
                     tx_params = {
                         "jsonrpc": "2.0",
                         "id": 1,
@@ -313,7 +313,7 @@ async def verify_pump_token(session: aiohttp.ClientSession, token_address: str, 
                         #logging.info("----------------------------------------")
                         
                         # Log all account details in the transaction and check for verification
-                        logging.info("Account Details:")
+                        #logging.info("Account Details:")
                         for idx, acc in enumerate(accounts):
                             try:
                                 # Get account info for each address
@@ -337,12 +337,12 @@ async def verify_pump_token(session: aiohttp.ClientSession, token_address: str, 
                                 async with session.post(SOLANA_RPC_URL, json=acc_info_params) as acc_response:
                                     acc_data = await acc_response.json()
                                     if "result" not in acc_data or acc_data["result"] is None:
-                                        logging.info(f"No account info found for {acc_pubkey}")
+                                        #logging.info(f"No account info found for {acc_pubkey}")
                                         continue
                                         
                                     acc_info = acc_data["result"].get("value")
                                     if not acc_info:
-                                        logging.info(f"No value in account info for {acc_pubkey}")
+                                        #logging.info(f"No value in account info for {acc_pubkey}")
                                         continue
                                         
                                     acc_owner = acc_info.get('owner')
@@ -429,7 +429,7 @@ async def verify_pump_token(session: aiohttp.ClientSession, token_address: str, 
                 return False, None, None, None
                 
             raydium_data = await response.json()
-            logging.info(f"Raydium Token Info Response: {raydium_data}")
+            #logging.info(f"Raydium Token Info Response: {raydium_data}")
             
             # Check if response has data field and contains valid token info
             if (raydium_data.get("success") and 
@@ -454,7 +454,7 @@ async def get_token_details_async(token_address: str, session: aiohttp.ClientSes
     try:
         # First get metadata to check update authority
         metadata = await get_metadata(session, token_address)
-        logging.info(f"Metadata response: {metadata}")
+        #logging.info(f"Metadata response: {metadata}")
         
         # Get token account info to check program features
         acc_info_params = {
@@ -604,6 +604,7 @@ def process_token_2022_extensions(token_details: TokenDetails, info: Dict) -> To
     ])
     
     token_details.security_review = "FAILED" if has_security_features else "PASSED"
+    logging.info(f"Token-2022 - Security review: {token_details.security_review}")
     return token_details
 
 async def process_tokens_concurrently(token_addresses: List[str], session: aiohttp.ClientSession) -> List[Dict]:
