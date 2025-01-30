@@ -51,6 +51,12 @@ st.markdown("""
     .stProgress > div > div > div {
         background-color: #7047EB;
     }
+    .metric-container {
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 0.5rem 0;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -86,7 +92,22 @@ with tab1:
                         # Convert TokenDetails to dictionary
                         result_dict = result.to_dict()
                         
-                        # Display results
+                        # Display key metrics in a more visual way
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.markdown("<div class='metric-container'>", unsafe_allow_html=True)
+                            st.metric("Transaction Count", result_dict.get('transaction_count', 'N/A'))
+                            st.markdown("</div>", unsafe_allow_html=True)
+                        with col2:
+                            st.markdown("<div class='metric-container'>", unsafe_allow_html=True)
+                            st.metric("Security Review", result_dict.get('security_review', 'N/A'))
+                            st.markdown("</div>", unsafe_allow_html=True)
+                        with col3:
+                            st.markdown("<div class='metric-container'>", unsafe_allow_html=True)
+                            st.metric("Token Program", "Token-2022" if "Token 2022" in result_dict.get('owner_program', '') else "SPL Token")
+                            st.markdown("</div>", unsafe_allow_html=True)
+                        
+                        # Display full results
                         st.markdown("<div class='output-container'>", unsafe_allow_html=True)
                         st.json(result_dict)
                         
@@ -142,11 +163,19 @@ with tab2:
         
         if st.button("Process Batch", key="batch_process"):
             try:
-                with st.spinner("Processing batch..."):
-                    async def process_batch():
-                        async with aiohttp.ClientSession() as session:
-                            return await process_tokens_concurrently(addresses, session)
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                
+                async def process_batch():
+                    async with aiohttp.ClientSession() as session:
+                        results = await process_tokens_concurrently(addresses, session)
+                        for i, _ in enumerate(results, 1):
+                            progress = i / len(addresses)
+                            progress_bar.progress(progress)
+                            status_text.text(f"Processed {i}/{len(addresses)} tokens")
+                        return results
                     
+                with st.spinner("Processing batch..."):
                     results = asyncio.run(process_batch())
                     
                     # Display summary
@@ -170,12 +199,13 @@ with tab2:
                         )
                     
                     with col2:
-                        # Create CSV
-                        csv_data = "address,name,symbol,owner_program,security_review\n"
+                        # Create CSV with transaction count
+                        csv_data = "address,name,symbol,owner_program,security_review,transaction_count\n"
                         for r in results:
                             if r['status'] == 'success':
                                 csv_data += f"{r['address']},{r.get('name', 'N/A')},{r.get('symbol', 'N/A')},"
-                                csv_data += f"{r.get('owner_program', 'N/A')},{r.get('security_review', 'N/A')}\n"
+                                csv_data += f"{r.get('owner_program', 'N/A')},{r.get('security_review', 'N/A')},"
+                                csv_data += f"{r.get('transaction_count', 'N/A')}\n"
                         
                         st.download_button(
                             "Download CSV",
@@ -214,6 +244,6 @@ st.markdown("---")
 st.markdown("""
 <div style='text-align: center; color: #666;'>
     Noama Samreen | 
-    <a href='https://github.com/noama-samreen/spl-token-custody-analysis/' target='_blank'>GitHub</a>
+    <a href='https://github.com/noama-samreen/spl-token-custody-analysis' target='_blank'>GitHub</a>
 </div>
 """, unsafe_allow_html=True) 
