@@ -127,7 +127,7 @@ async def get_metadata(session: aiohttp.ClientSession, mint_address: str) -> Opt
                     else:
                         symbol = "N/A"
                     
-                    logging.info(f"Successfully parsed metadata - Name: {name}, Symbol: {symbol}, Update Authority: {update_authority}")
+                    logging.info(f"Successfully parsed metadata - Name: {name}, Symbol: {symbol}")
                     return {
                         "name": name,
                         "symbol": symbol,
@@ -176,7 +176,9 @@ class TokenDetails:
             'address': self.address,
             'owner_program': self.owner_program,
             'freeze_authority': self.freeze_authority,
-            'update_authority': self.update_authority  # Added to dict output
+            'update_authority': (f"{self.update_authority} (Pump.Fun Mint Authority)" 
+                               if self.update_authority == "TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM" 
+                               else self.update_authority)
         }
         
         # Add extensions if they exist
@@ -188,12 +190,14 @@ class TokenDetails:
                 'confidential_transfers': self.extensions.confidential_transfers_authority,
             })
         
-        # Add pump-specific fields only if it's a pump token
-        if self.address.lower().endswith('pump'):
+        # Add pump-specific fields if either condition is met
+        if (self.address.lower().endswith('pump') or 
+            self.update_authority == "TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM"):
             if self.first_transaction is not None:
                 result['first_transaction'] = self.first_transaction
-            if self.transaction_count is not None:
-                result['transaction_count'] = self.transaction_count
+                # Only include transaction_count if we actually fetched the history
+                if self.transaction_count is not None and self.transaction_count > 0:
+                    result['transaction_count'] = self.transaction_count
             result['is_genuine_pump_fun_token'] = self.is_genuine_pump_fun_token
         
         result['security_review'] = self.security_review
@@ -250,7 +254,7 @@ async def verify_pump_token(session: aiohttp.ClientSession, token_address: str) 
     PUMP_PROGRAM = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"
     PUMP_UPDATE_AUTHORITY = "TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM"
     
-    logging.info(f"Starting pump token verification for {token_address}")
+    #logging.info(f"Starting pump token verification for {token_address}")
     
     # Check if it's a pump token by address suffix or update authority
     is_pump_address = token_address.lower().endswith('pump')
@@ -269,7 +273,7 @@ async def verify_pump_token(session: aiohttp.ClientSession, token_address: str) 
     
     # If we reach here, exactly one condition is true (XOR)
     # We need to verify by checking the first transaction
-    logging.info("One pump condition met - verifying through transaction history...")
+    logging.info("Only one pump condition met - verifying through transaction history...")
     
     try:
         total_signatures = []
@@ -283,7 +287,7 @@ async def verify_pump_token(session: aiohttp.ClientSession, token_address: str) 
             
             if not signatures:
                 logging.info("No signatures found in batch")
-                break
+                return False, None, 0  # Return 0 for transaction count if no signatures found
                 
             total_signatures.extend(signatures)
             logging.info(f"Total signatures collected: {len(total_signatures)}")
@@ -412,14 +416,14 @@ async def get_token_details_async(token_address: str, session: aiohttp.ClientSes
                     token_details.name = metadata["name"]
                     token_details.symbol = metadata["symbol"]
                     token_details.update_authority = metadata["update_authority"]
-                    logging.info(f"Updated token details with metadata: {metadata}")
+                    #logging.info(f"Updated token details with metadata: {metadata}")
                 
                 # Update pump verification details if either condition was met
                 if is_pump_address or is_pump_authority:
                     token_details.is_genuine_pump_fun_token = is_genuine_pump_fun_token
                     token_details.first_transaction = first_transaction
                     token_details.transaction_count = transaction_count
-                    logging.info(f"Updated pump verification details - Genuine: {is_genuine_pump_fun_token}, Tx count: {transaction_count}")
+                    #logging.info(f"Updated pump verification details - Genuine: {is_genuine_pump_fun_token}, Tx count: {transaction_count}")
 
                 return token_details, owner_program
 
