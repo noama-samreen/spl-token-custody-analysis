@@ -2,7 +2,7 @@ import streamlit as st
 import asyncio
 import aiohttp
 import json
-from spl_token_analysis import get_token_details_async, process_tokens_concurrently
+from spl_token_analysis_v2 import get_token_details_async, process_tokens_concurrently
 from spl_report_generator import create_pdf
 import tempfile
 import os
@@ -93,19 +93,27 @@ with tab1:
                         result_dict = result.to_dict()
                         
                         # Display key metrics in a more visual way
-                        col1, col2, col3 = st.columns(3)
+                        col1, col2 = st.columns(2)
                         with col1:
-                            st.markdown("<div class='metric-container'>", unsafe_allow_html=True)
-                            st.metric("Transaction Count", result_dict.get('transaction_count', 'N/A'))
-                            st.markdown("</div>", unsafe_allow_html=True)
-                        with col2:
                             st.markdown("<div class='metric-container'>", unsafe_allow_html=True)
                             st.metric("Security Review", result_dict.get('security_review', 'N/A'))
                             st.markdown("</div>", unsafe_allow_html=True)
-                        with col3:
+                        with col2:
                             st.markdown("<div class='metric-container'>", unsafe_allow_html=True)
                             st.metric("Token Program", "Token-2022" if "Token 2022" in result_dict.get('owner_program', '') else "SPL Token")
                             st.markdown("</div>", unsafe_allow_html=True)
+                        
+                        # If it's a pump token, show additional metrics
+                        if token_address.lower().endswith('pump'):
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.markdown("<div class='metric-container'>", unsafe_allow_html=True)
+                                st.metric("Transaction Count", result_dict.get('transaction_count', 'N/A'))
+                                st.markdown("</div>", unsafe_allow_html=True)
+                            with col2:
+                                st.markdown("<div class='metric-container'>", unsafe_allow_html=True)
+                                st.metric("Genuine Pump Token", "Yes" if result_dict.get('is_genuine_pump_fun_token', False) else "No")
+                                st.markdown("</div>", unsafe_allow_html=True)
                         
                         # Display full results
                         st.markdown("<div class='output-container'>", unsafe_allow_html=True)
@@ -199,13 +207,24 @@ with tab2:
                         )
                     
                     with col2:
-                        # Create CSV with transaction count
-                        csv_data = "address,name,symbol,owner_program,security_review,transaction_count\n"
+                        # Create CSV with conditional pump token fields
+                        csv_data = "address,name,symbol,owner_program,security_review"
+                        # Add pump-specific headers only if any pump tokens are present
+                        has_pump_tokens = any(r['address'].lower().endswith('pump') for r in results if r['status'] == 'success')
+                        if has_pump_tokens:
+                            csv_data += ",transaction_count,is_genuine_pump_fun_token"
+                        csv_data += "\n"
+                        
                         for r in results:
                             if r['status'] == 'success':
                                 csv_data += f"{r['address']},{r.get('name', 'N/A')},{r.get('symbol', 'N/A')},"
-                                csv_data += f"{r.get('owner_program', 'N/A')},{r.get('security_review', 'N/A')},"
-                                csv_data += f"{r.get('transaction_count', 'N/A')}\n"
+                                csv_data += f"{r.get('owner_program', 'N/A')},{r.get('security_review', 'N/A')}"
+                                if has_pump_tokens:
+                                    if r['address'].lower().endswith('pump'):
+                                        csv_data += f",{r.get('transaction_count', 'N/A')},{r.get('is_genuine_pump_fun_token', 'N/A')}"
+                                    else:
+                                        csv_data += ",N/A,N/A"
+                                csv_data += "\n"
                         
                         st.download_button(
                             "Download CSV",
@@ -218,7 +237,6 @@ with tab2:
                     with col3:
                         # Generate PDFs for batch
                         with tempfile.TemporaryDirectory() as temp_dir:
-                            # Create a zip file containing all PDFs
                             import zipfile
                             zip_path = os.path.join(temp_dir, "token_analysis_pdfs.zip")
                             with zipfile.ZipFile(zip_path, 'w') as zipf:
@@ -227,7 +245,6 @@ with tab2:
                                         pdf_path = create_pdf(result, temp_dir)
                                         zipf.write(pdf_path, os.path.basename(pdf_path))
                             
-                            # Offer zip file for download
                             with open(zip_path, "rb") as zip_file:
                                 st.download_button(
                                     "Download PDFs",
