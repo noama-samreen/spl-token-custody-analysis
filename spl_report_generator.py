@@ -66,7 +66,7 @@ def create_basic_table(data, cell_style):
         ('BACKGROUND', (0,0), (0,-1), colors.lightgrey),
         ('TEXTCOLOR', (0,0), (-1,-1), colors.black),
         ('PADDING', (0,0), (-1,-1), 6),
-        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),  # Changed to MIDDLE for better alignment
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
     ]))
     return table
 
@@ -129,11 +129,12 @@ def create_pdf(token_data, output_dir):
     profile = "SPL Token 2022 Standard" if "Token 2022" in token_data['owner_program'] else "SPL Token Standard"
     
     data = [
-        [Paragraph("Reviewer", cell_style), Paragraph("Noama Samreen", cell_style)],  # Fixed name format
+        [Paragraph("Reviewer", cell_style), Paragraph("Noama Samreen", cell_style)],
         [Paragraph("Profile", cell_style), Paragraph(profile, cell_style)],
         [Paragraph("Review Date", cell_style), Paragraph(current_date, cell_style)],
-        [Paragraph("Network", cell_style), Paragraph("Solana", cell_style)],  # Changed SPL to Solana
-        [Paragraph("Address", cell_style), Paragraph(token_data['address'], cell_style)]
+        [Paragraph("Network", cell_style), Paragraph("Solana", cell_style)],
+        [Paragraph("Address", cell_style), Paragraph(token_data['address'], cell_style)],
+        [Paragraph("Transaction Count", cell_style), Paragraph(str(token_data.get('transaction_count', 'N/A')), cell_style)]
     ]
     
     elements.append(create_basic_table(data, cell_style))
@@ -172,12 +173,13 @@ trusted Token Program"""
     additional_data = [["Field", "Value"]]
     
     field_order = [
-        'owner_program',  # Added owner program as first field
+        'owner_program',
         'freeze_authority',
         'permanent_delegate',
         'transaction_fees',
         'transfer_hook',
-        'confidential_transfers'
+        'confidential_transfers',
+        'first_transaction'  # Added first transaction to the field order
     ]
     
     # Define program name mapping
@@ -195,7 +197,6 @@ trusted Token Program"""
         # Special handling for owner program to show address and name
         if field == 'owner_program' and value != 'None':
             program_name = PROGRAM_NAMES.get(value, "Unknown Program")
-            # Only show the program name in parentheses if we recognize the program
             if program_name != "Unknown Program":
                 value = f"{value} ({program_name})"
             
