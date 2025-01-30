@@ -135,7 +135,6 @@ with tab1:
                     st.session_state.analysis_results = result.to_dict()
             except Exception as e:
                 st.error(f"Error analyzing token: {str(e)}")
-                return
     
     # Display results if they exist
     if st.session_state.analysis_results:
