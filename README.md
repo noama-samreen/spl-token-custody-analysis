@@ -8,7 +8,6 @@ A Python-based tool for analyzing Solana tokens, supporting both standard SPL to
 - **Program Verification**:
   - Standard SPL Token Program
   - Token-2022 Program
-  - System Program detection
 - **Metadata Retrieval**:
   - Token name and symbol
   - Update authority
@@ -32,7 +31,7 @@ A Python-based tool for analyzing Solana tokens, supporting both standard SPL to
   - Raydium AMM program interaction detection
 - **Token Status**:
   - Genuine Pump.Fun token verification
-  - Raydium graduation status
+  - Raydium graduation status using Raydium API https://api-v3.raydium.io/docs/
   - Transaction signature tracking
   - Interacting account details
 
@@ -69,7 +68,6 @@ python spl_token_analysis_v2.py input_file.txt [output_prefix]
 
 ### Output Formats
 - **JSON**: Detailed analysis results
-- **Logs**: Operation details and debug information
 
 ### Example Output Structure
 ```json
