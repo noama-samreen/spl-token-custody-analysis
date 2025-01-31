@@ -206,47 +206,6 @@ def get_owner_program_label(owner_address: str) -> str:
     """Cached helper function to get the label for owner program"""
     return OWNER_LABELS.get(owner_address, "Unknown Owner")
 
-async def get_signatures_batch(session: aiohttp.ClientSession, address: str, before: str = None) -> list:
-    """Get a batch of signatures with retries"""
-    #logging.info(f"Fetching signatures for {address}")
-    params = {
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "getSignaturesForAddress",
-        "params": [
-            address,
-            {
-                "before": before,
-                "limit": BATCH_SIZE,
-                "commitment": "confirmed"
-            }
-        ]
-    }
-    
-    retry_count = 0
-    while True:
-        try:
-            async with session.post(SOLANA_RPC_URL, json=params) as response:
-                #logging.info(f"Response status: {response.status}")
-                data = await response.json()
-                if "error" in data:
-                    if data["error"].get("code") == 429:
-                        retry_count += 1
-                        wait_time = min(2 * (1.5 ** retry_count), 10)  # Exponential backoff up to 10 seconds
-                        logging.info(f"Rate limited. Waiting {wait_time} seconds...")
-                        await sleep(wait_time)
-                        continue
-                    return []
-                signatures = data.get('result', [])
-                logging.info(f"Got {len(signatures)} signatures")
-                return signatures
-        except Exception as e:
-            logging.error(f"Error in get_signatures_batch: {str(e)}")
-            retry_count += 1
-            wait_time = min(2 * (1.5 ** retry_count), 10)
-            await sleep(wait_time)
-            continue
-
 async def verify_pump_token(session: aiohttp.ClientSession, token_address: str, metadata: Optional[dict] = None) -> Tuple[bool, Optional[str], Optional[str], Optional[str]]:
     """Verify if token is a genuine pump.fun token using new criteria"""
     PUMP_PROGRAM = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"
@@ -257,6 +216,40 @@ async def verify_pump_token(session: aiohttp.ClientSession, token_address: str, 
     if not metadata or metadata.get("update_authority") != PUMP_UPDATE_AUTHORITY:
         logging.info(f"Token {token_address} failed update authority check")
         return False, None, None, None
+        # Continue to Step 3
+    
+    # Step 3: Check Raydium token list if no Pump.fun interaction found
+    #Moved step 3 before step 2 to optimize 
+    logging.info(f"Pump.fun Token Checks: Checking Raydium graduation status")
+    try:
+        await asyncio.sleep(1)
+        RAYDIUM_BASE_URL = "https://api-v3.raydium.io"
+        RAYDIUM_MINT_INFO_ENDPOINT = "/mint/ids"
+        
+        async with session.get(f"{RAYDIUM_BASE_URL}{RAYDIUM_MINT_INFO_ENDPOINT}?mints={token_address}") as response:
+            if response.status != 200:
+                logging.error(f"Raydium API returned status {response.status}")
+                return False, None, None, None
+                
+            raydium_data = await response.json()
+            #logging.info(f"Raydium Token Info Response: {raydium_data}")
+            
+            # Check if response has data field and contains valid token info
+            if (raydium_data.get("success") and 
+                raydium_data.get("data") and 
+                isinstance(raydium_data["data"], list) and 
+                raydium_data["data"][0]):
+                
+                token_info = raydium_data["data"][0]
+                logging.info(f"Pump.fun Token Checks: Token found in Raydium - Name: {token_info.get('name')}, Symbol: {token_info.get('symbol')}")
+                return True, "raydium", None, None
+            else:
+                logging.info(f"Pump.fun Token Checks: Token not found in Raydium (not graduated)")
+                #return False, None, None, None
+    
+    except Exception as e:
+        logging.error(f"Error checking Raydium API: {str(e)}")
+        return False, None, None, None        
 
     # Step 2: Check recent transactions for Pump.fun interaction
     try:
@@ -267,12 +260,13 @@ async def verify_pump_token(session: aiohttp.ClientSession, token_address: str, 
             "params": [
                 token_address,
                 {
-                    "limit": 5,
+                    "limit": 3,
                     "commitment": "confirmed"
                 }
             ]
         }
         
+    
         async with session.post(SOLANA_RPC_URL, json=params) as response:
             data = await response.json()
             if "result" not in data:
@@ -280,7 +274,7 @@ async def verify_pump_token(session: aiohttp.ClientSession, token_address: str, 
                 # Continue to Step 3
             else:
                 signatures = data["result"]
-                logging.info(f"Step 2: Found {len(signatures)} recent transactions")
+                logging.info(f"Pump.fun Token Checks: Found recent transactions")
                 
                 # Check each transaction for Pump.fun interaction
                 for sig_info in signatures:
@@ -298,7 +292,6 @@ async def verify_pump_token(session: aiohttp.ClientSession, token_address: str, 
                             }
                         ]
                     }
-                    
                     async with session.post(SOLANA_RPC_URL, json=tx_params) as tx_response:
                         tx_data = await tx_response.json()
                         if "result" not in tx_data or not tx_data["result"]:
@@ -333,7 +326,7 @@ async def verify_pump_token(session: aiohttp.ClientSession, token_address: str, 
                                         }
                                     ]
                                 }
-                                
+                                await asyncio.sleep(1)
                                 async with session.post(SOLANA_RPC_URL, json=acc_info_params) as acc_response:
                                     acc_data = await acc_response.json()
                                     if "result" not in acc_data or acc_data["result"] is None:
@@ -346,7 +339,7 @@ async def verify_pump_token(session: aiohttp.ClientSession, token_address: str, 
                                         continue
                                         
                                     acc_owner = acc_info.get('owner')
-                                    acc_program = acc_info.get('data', {}).get('program') if isinstance(acc_info.get('data'), dict) else None
+                                    #acc_program = acc_info.get('data', {}).get('program') if isinstance(acc_info.get('data'), dict) else None
                                     
                                     #logging.info(f"Account {idx}:")
                                     #logging.info(f"  Pubkey: {acc_pubkey}")
@@ -410,43 +403,11 @@ async def verify_pump_token(session: aiohttp.ClientSession, token_address: str, 
                                 logging.error(f"Error checking account {acc_pubkey}: {str(e)}")
                                 continue
                 
-                logging.info("Step 2: No accounts owned by Pump.fun program found in recent transactions")
+                logging.info("Pump.fun Token Checks: No accounts owned by Pump.fun program found in recent transactions")
     
     except Exception as e:
-        logging.error(f"Error checking transactions: {str(e)}")
-        # Continue to Step 3
-    
-    # Step 3: Check Raydium token list if no Pump.fun interaction found
-    logging.info(f"Step 3: Checking Raydium graduation status")
-    try:
-        await asyncio.sleep(1)
-        RAYDIUM_BASE_URL = "https://api-v3.raydium.io"
-        RAYDIUM_MINT_INFO_ENDPOINT = "/mint/ids"
-        
-        async with session.get(f"{RAYDIUM_BASE_URL}{RAYDIUM_MINT_INFO_ENDPOINT}?mints={token_address}") as response:
-            if response.status != 200:
-                logging.error(f"Raydium API returned status {response.status}")
-                return False, None, None, None
-                
-            raydium_data = await response.json()
-            #logging.info(f"Raydium Token Info Response: {raydium_data}")
-            
-            # Check if response has data field and contains valid token info
-            if (raydium_data.get("success") and 
-                raydium_data.get("data") and 
-                isinstance(raydium_data["data"], list) and 
-                raydium_data["data"][0]):
-                
-                token_info = raydium_data["data"][0]
-                logging.info(f"Step 3: Token found in Raydium - Name: {token_info.get('name')}, Symbol: {token_info.get('symbol')}")
-                return True, "raydium", None, None
-            else:
-                logging.info(f"Step 3: Token not found in Raydium (not graduated)")
-                return False, None, None, None
-                
-    except Exception as e:
-        logging.error(f"Error checking Raydium API: {str(e)}")
-        return False, None, None, None
+        logging.error(f"Error checking transactions: {str(e)}")           
+   
     
     return False, None, None, None
 
@@ -497,7 +458,7 @@ async def get_token_details_async(token_address: str, session: aiohttp.ClientSes
         is_pump_authority = metadata and metadata.get("update_authority") == "TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM"
         
         if is_pump_authority:
-            logging.info(f"Step 1: Potential pump token detected")
+            logging.info(f"Pump.fun Token Checks: Potential pump token detected")
             is_genuine_pump_fun_token, interacted_with, interacting_account, interaction_signature = await verify_pump_token(session, token_address, metadata)
             
             token_details.is_genuine_pump_fun_token = is_genuine_pump_fun_token
