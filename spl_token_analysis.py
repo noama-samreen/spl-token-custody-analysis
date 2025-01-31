@@ -20,7 +20,6 @@ METADATA_PROGRAM_ID = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
 MAX_RETRIES = 4
 BASE_DELAY = 2.0  # 2 second between requests
 RETRY_DELAY = 2.0  # Additional delay when rate limited
-BATCH_SIZE = 1000  # Maximum allowed by Solana
 
 # Original constants
 CONCURRENT_LIMIT = 1  # Back to original value
