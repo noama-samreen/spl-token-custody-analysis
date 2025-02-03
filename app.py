@@ -115,7 +115,7 @@ with tab1:
     with col2:
         analyze_button = st.button("Analyze Token", key="single_analyze")
     with col3:
-        if st.button("Start New Analysis", key="reset_single"):
+        if st.button("Clear", key="reset_single"):
             st.session_state.analysis_results = None
             token_address = ""
             st.experimental_rerun()
