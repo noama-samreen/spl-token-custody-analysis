@@ -115,7 +115,7 @@ with tab1:
     with col2:
         analyze_button = st.button("Analyze Token", key="single_analyze")
     with col3:
-        if st.button("Clear", key="reset_single"):
+        if st.button("Reset", key="reset_single"):
             st.session_state.analysis_results = None
             token_address = ""
             st.experimental_rerun()
@@ -218,7 +218,7 @@ with tab2:
             help="File should contain one Solana token address per line"
         )
     with col2:
-        if st.button("Start New Batch", key="reset_batch"):
+        if st.button("Reset", key="reset_batch"):
             st.session_state.batch_results = None
             uploaded_file = None
             st.experimental_rerun()
