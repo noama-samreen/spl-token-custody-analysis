@@ -16,7 +16,7 @@ if 'batch_results' not in st.session_state:
 
 # Page config
 st.set_page_config(
-    page_title="Solana Token Security Analyzer",
+    page_title="Solana Token Security Scanner",
     page_icon="🔍",
     layout="wide"
 )
@@ -102,7 +102,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Header
-st.title("🔍 Solana Token Security Analyzer")
+st.title("🔍 Solana Token Security Scanner")
 st.markdown("Analyze details of SPL tokens and Token-2022 assets on the Solana blockchain, including tokens from pump.fun.")
 
 # Create tabs
@@ -299,7 +299,7 @@ with tab2:
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center; color: #666;'>
-    Noama Samreen | 
+    Solana Token Security Scanner | 
     <a href='https://github.com/noama-samreen/spl-token-custody-analysis' target='_blank'>GitHub</a>
 </div>
 """, unsafe_allow_html=True) 
