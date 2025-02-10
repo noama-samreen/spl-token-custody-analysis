@@ -140,35 +140,36 @@ def create_pdf(token_data, output_dir):
     elements.append(Spacer(1, 30))
     
     # Context text
-    context_text = (
-        "Confidential treatment requested under NY Banking Law § 36.10 and NY Pub. Off. Law § "
-        "87.2(d). 2\n"
-        "\n"
-        "Conflicts Certification:\n"
-        "To the best of your knowledge, please confirm that you and your immediate family\n"
-        "(1) have not invested more than $10,000 in the asset or its issuer,\n"
-        "(2) do not own more than 1% of the asset outstanding, and\n"
-        "(3) do not have a personal relationship with the issuer's management, governing body, or "
-        "owners.\n"
-        "For wrapped assets, the underlying asset must be considered for the purpose of this conflict "
-        "certification, unless\n"
-        "(1) the asset is a stablecoin; or\n"
-        "(2) has a market cap of over $100 billion dollars.\n"
-        "\n"
-        "For multi-chain assets every version of the multi-chain asset must be counted together for the "
-        "purpose of this conflict certification\n"
-        "\n"
-        "Reviewer: Harshal Mandalkar\n"
-        "Confirmed\n"
-        "\n"
-        "<b>Solana SPL Token Review Context:</b> Solana tokens do not possess customizable code per "
-        "asset. Rather, a single \"program\" generates boiler template tokens with distinct states for each "
-        "newly created token. Therefore, examining the base program configurations is adequate for "
-        "reviewing all other tokens associated with it. The 'Token Program' adheres to standard "
-        "practices, undergoing thorough review and auditing procedures. Therefore, within this review "
-        "process, the focus remains on validating token configurations specific to tokens managed by the "
+    context_lines = [
+        "Confidential treatment requested under NY Banking Law § 36.10 and NY Pub. Off. Law § ",
+        "87.2(d). 2",
+        "",
+        "Conflicts Certification:",
+        "To the best of your knowledge, please confirm that you and your immediate family",
+        "(1) have not invested more than $10,000 in the asset or its issuer,",
+        "(2) do not own more than 1% of the asset outstanding, and",
+        "(3) do not have a personal relationship with the issuer's management, governing body, or ",
+        "owners.",
+        "For wrapped assets, the underlying asset must be considered for the purpose of this conflict ",
+        "certification, unless",
+        "(1) the asset is a stablecoin; or",
+        "(2) has a market cap of over $100 billion dollars.",
+        "",
+        "For multi-chain assets every version of the multi-chain asset must be counted together for the ",
+        "purpose of this conflict certification",
+        "",
+        "Reviewer: Harshal Mandalkar",
+        "Confirmed",
+        "",
+        "Solana SPL Token Review Context: Solana tokens do not possess customizable code per ",
+        "asset. Rather, a single \"program\" generates boiler template tokens with distinct states for each ",
+        "newly created token. Therefore, examining the base program configurations is adequate for ",
+        "reviewing all other tokens associated with it. The 'Token Program' adheres to standard ",
+        "practices, undergoing thorough review and auditing procedures. Therefore, within this review ",
+        "process, the focus remains on validating token configurations specific to tokens managed by the ",
         "trusted Token Program"
-    )
+    ]
+    context_text = '\n'.join(context_lines)
     
     elements.append(Paragraph(context_text, context_style))
     elements.append(Spacer(1, 25))
