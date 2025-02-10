@@ -140,7 +140,23 @@ def create_pdf(token_data, output_dir):
     elements.append(Spacer(1, 30))
     
     # Context text
-    context_text = """<b>Solana SPL Token Review Context:</b> Solana tokens do not possess customizable code per 
+    context_text = """<b>Confidential treatment requested under NY Banking Law § 36.10 and NY Pub. Off. Law § 87.2(d).</b>
+
+<b>Conflicts Certification:</b>
+To the best of your knowledge, please confirm that you and your immediate family
+(1) have not invested more than $10,000 in the asset or its issuer,
+(2) do not own more than 1% of the asset outstanding, and
+(3) do not have a personal relationship with the issuer's management, governing body, or owners.
+For wrapped assets, the underlying asset must be considered for the purpose of this conflict certification, unless
+(1) the asset is a stablecoin; or
+(2) has a market cap of over $100 billion dollars.
+
+For multi-chain assets every version of the multi-chain asset must be counted together for the purpose of this conflict certification.
+
+Reviewer: Harshal Mandalkar
+Confirmed
+
+<b>Solana SPL Token Review Context:</b> Solana tokens do not possess customizable code per 
 asset. Rather, a single "program" generates boiler template tokens with distinct states for each 
 newly created token. Therefore, examining the base program configurations is adequate for 
 reviewing all other tokens associated with it. The 'Token Program' adheres to standard 
