@@ -113,10 +113,7 @@ with tab1:
     col1, col2, col3 = st.columns([3, 1, 1])
     with col1:
         token_address = st.text_input("Enter token address", placeholder="Enter Solana token address...")
-    
-    # Add separator
-    st.markdown("---")
-    
+
     # Reviewer information below address
     reviewer_col1, reviewer_col2 = st.columns(2)
     with reviewer_col1:
