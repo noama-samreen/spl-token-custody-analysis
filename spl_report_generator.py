@@ -349,7 +349,7 @@ trusted Token Program"""
     
     # Standard SPL Token Check
     is_valid_token_program = "Token Program" in token_data.get('owner_program', '') or "Token 2022" in token_data.get('owner_program', '')
-    spl_header = f"""{'1' if is_valid_token_program else '5'} | Standard Solana SPL Token {'-Pass' if is_valid_token_program else '-Fail'}"""
+    spl_header = f"""{'1' if is_valid_token_program else '5'} | Standard Solana SPL Token {'- Pass' if is_valid_token_program else '- Fail'}"""
     
     elements.append(Paragraph(spl_header, risk_subheader_style))
     
@@ -369,7 +369,8 @@ trusted Token Program"""
     elements.append(Paragraph("N/A", risk_body_style))
     
     # Freeze Authority Check
-    has_no_freeze = token_data.get('freeze_authority', 'None') == 'None'
+    freeze_value = token_data.get('freeze_authority', 'None')
+    has_no_freeze = freeze_value == 'None' or freeze_value is None or freeze_value == ''
     freeze_header = f"""{'1' if has_no_freeze else '5'} | No Freeze Authority {'- Pass' if has_no_freeze else '- Fail'}"""
     elements.append(Paragraph(freeze_header, risk_subheader_style))
     
@@ -380,7 +381,7 @@ trusted Token Program"""
     # Assessment
     elements.append(Paragraph("<b>Assessment:</b>", risk_body_style))
     elements.append(Paragraph(
-        f"""As token metadata indicates, the freeze authority is: {token_data.get('freeze_authority', 'no freeze authority')}.""",
+        f"""As token metadata indicates, the freeze authority is: {freeze_value}.""",
         risk_body_style
     ))
     elements.append(Spacer(1, 8))
@@ -392,14 +393,15 @@ trusted Token Program"""
     # Add Token 2022 specific checks if applicable
     if "Token 2022" in token_data.get('owner_program', ''):
         # Update Authority Check
-        has_no_update = token_data.get('update_authority', 'None') == 'None'
+        update_value = token_data.get('update_authority', 'None')
+        has_no_update = update_value == 'None' or update_value is None or update_value == ''
         update_header = f"""{'1' if has_no_update else '5'} | No Update Authority {'- Pass' if has_no_update else '- Fail'}"""
         elements.append(Paragraph(update_header, risk_subheader_style))
         update_description = """A missing Update Authority means that the token configuration can't be altered."""
         elements.append(Paragraph(update_description, risk_body_style))
         elements.append(Paragraph("<b>Assessment:</b>", risk_body_style))
         elements.append(Paragraph(
-            f"""As token metadata indicates, the update authority is: {token_data.get('update_authority', 'no update authority')}.""",
+            f"""As token metadata indicates, the update authority is: {update_value}.""",
             risk_body_style
         ))
         elements.append(Spacer(1, 8))
@@ -407,14 +409,15 @@ trusted Token Program"""
         elements.append(Paragraph("N/A", risk_body_style))
 
         # Permanent Delegate Check
-        has_no_delegate = token_data.get('permanent_delegate', 'None') == 'None'
+        delegate_value = token_data.get('permanent_delegate', 'None')
+        has_no_delegate = delegate_value == 'None' or delegate_value is None or delegate_value == ''
         delegate_header = f"""{'1' if has_no_delegate else '5'} | No Permanent Delegate {'- Pass' if has_no_delegate else '- Fail'}"""
         elements.append(Paragraph(delegate_header, risk_subheader_style))
         delegate_description = """Permanent Delegate means that it is set to null and therefore Therefore, no delegate can burn or transfer any amount of tokens."""
         elements.append(Paragraph(delegate_description, risk_body_style))
         elements.append(Paragraph("<b>Assessment:</b>", risk_body_style))
         elements.append(Paragraph(
-            f"""As token metadata indicates, the permanent delegate is: {token_data.get('permanent_delegate', 'no permanent delegate')}.""",
+            f"""As token metadata indicates, the permanent delegate is: {delegate_value}.""",
             risk_body_style
         ))
         elements.append(Spacer(1, 8))
@@ -423,14 +426,15 @@ trusted Token Program"""
         
         # Transaction Fees Check
         fees_value = token_data.get('transaction_fees', 'None')
-        has_no_fees = fees_value == 'None' or fees_value == '0' or fees_value == 0
+        has_no_fees = (fees_value == 'None' or fees_value is None or fees_value == '' 
+                      or fees_value == '0' or fees_value == 0)
         fees_header = f"""{'1' if has_no_fees else '5'} | No Transaction Fees {'- Pass' if has_no_fees else '- Fail'}"""
         elements.append(Paragraph(fees_header, risk_subheader_style))
-        transaction_fees_description = """Transaction fees are set to 0 and therefore no transaction fees are possible and send/receive token amounts are the same as expected."""
-        elements.append(Paragraph(transaction_fees_description, risk_body_style))
+        fees_description = """Transaction fees are set to 0 and therefore no transaction fees are possible and send/receive token amounts are the same as expected."""
+        elements.append(Paragraph(fees_description, risk_body_style))
         elements.append(Paragraph("<b>Assessment:</b>", risk_body_style))
         elements.append(Paragraph(
-            f"""As token metadata indicates, the transaction fees are: {token_data.get('transaction_fees', 'no transaction fees')}.""",
+            f"""As token metadata indicates, the transaction fees are: {fees_value}.""",
             risk_body_style
         ))
         elements.append(Spacer(1, 8))
@@ -438,7 +442,8 @@ trusted Token Program"""
         elements.append(Paragraph("N/A", risk_body_style))
         
         # Transfer Hook Check
-        has_no_hook = token_data.get('transfer_hook', 'None') == 'None'
+        hook_value = token_data.get('transfer_hook', 'None')
+        has_no_hook = hook_value == 'None' or hook_value is None or hook_value == ''
         hook_header = f"""{'1' if has_no_hook else '5'} | No Transfer Hook {'- Pass' if has_no_hook else '- Fail'}"""
         elements.append(Paragraph(hook_header, risk_subheader_style))
         
@@ -446,7 +451,7 @@ trusted Token Program"""
         elements.append(Paragraph(transfer_hook_description, risk_body_style))
         elements.append(Paragraph("<b>Assessment:</b>", risk_body_style))
         elements.append(Paragraph(
-            f"""As token metadata indicates, the transfer hook is: {token_data.get('transfer_hook', 'no transfer hook')}.""",
+            f"""As token metadata indicates, the transfer hook is: {hook_value}.""",
             risk_body_style
         ))
         elements.append(Spacer(1, 8))
@@ -454,14 +459,15 @@ trusted Token Program"""
         elements.append(Paragraph("N/A", risk_body_style))
         
         # Confidential Transfers Check
-        has_no_confidential = token_data.get('confidential_transfers', 'None') == 'None'
+        confidential_value = token_data.get('confidential_transfers', 'None')
+        has_no_confidential = confidential_value == 'None' or confidential_value is None or confidential_value == ''
         confidential_header = f"""{'1' if has_no_confidential else '5'} | No Confidential Transfers {'- Pass' if has_no_confidential else '- Fail'}"""
         elements.append(Paragraph(confidential_header, risk_subheader_style))
-        confidential_transfers_description = """The confidential transfer is a non-anonymous, non-private transfer that publicly shares the source, destination, and token type, but uses zero-knowledge proofs to encrypt the amount of the transfer."""
-        elements.append(Paragraph(confidential_transfers_description, risk_body_style))
+        confidential_description = """The confidential transfer is a non-anonymous, non-private transfer that publicly shares the source, destination, and token type, but uses zero-knowledge proofs to encrypt the amount of the transfer."""
+        elements.append(Paragraph(confidential_description, risk_body_style))
         elements.append(Paragraph("<b>Assessment:</b>", risk_body_style))
         elements.append(Paragraph(
-            f"""As token metadata indicates, the confidential transfers are: {token_data.get('confidential_transfers', 'no confidential transfers')}.""",
+            f"""As token metadata indicates, the confidential transfers are: {confidential_value}.""",
             risk_body_style
         ))
         elements.append(Spacer(1, 8))
