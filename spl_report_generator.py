@@ -348,7 +348,10 @@ trusted Token Program"""
     elements.append(Paragraph("Risk Findings", risk_header_style))
     
     # Standard SPL Token Check
-    elements.append(Paragraph("Standard Solana SPL Token", risk_subheader_style))
+    is_valid_token_program = "Token Program" in token_data.get('owner_program', '') or "Token 2022" in token_data.get('owner_program', '')
+    spl_header = f"""{'1' if is_valid_token_program else '5'} | Standard Solana SPL Token {'-Pass' if is_valid_token_program else '-Fail'}"""
+    
+    elements.append(Paragraph(spl_header, risk_subheader_style))
     
     spl_description = """The token must be a standard Solana SPL Token (i.e. owned by the Token Program or Token
 2022 Program) to be eligible for umbrella approval."""
@@ -366,7 +369,9 @@ trusted Token Program"""
     elements.append(Paragraph("N/A", risk_body_style))
     
     # Freeze Authority Check
-    elements.append(Paragraph("No freeze account", risk_subheader_style))
+    has_no_freeze = token_data.get('freeze_authority', 'None') == 'None'
+    freeze_header = f"""{'1' if has_no_freeze else '5'} | No Freeze Authority {'- Pass' if has_no_freeze else '- Fail'}"""
+    elements.append(Paragraph(freeze_header, risk_subheader_style))
     
     freeze_description = """A missing freeze authority means that it is set to null and therefore a permanently revoked privilege. This means that account blacklisting is not possible."""
     elements.append(Paragraph(freeze_description, risk_body_style))
@@ -387,8 +392,9 @@ trusted Token Program"""
     # Add Token 2022 specific checks if applicable
     if "Token 2022" in token_data.get('owner_program', ''):
         # Update Authority Check
-        elements.append(Spacer(1, 15))
-        elements.append(Paragraph("No Update Authority", risk_subheader_style))
+        has_no_update = token_data.get('update_authority', 'None') == 'None'
+        update_header = f"""{'1' if has_no_update else '5'} | No Update Authority {'- Pass' if has_no_update else '- Fail'}"""
+        elements.append(Paragraph(update_header, risk_subheader_style))
         update_description = """A missing Update Authority means that the token configuration can't be altered."""
         elements.append(Paragraph(update_description, risk_body_style))
         elements.append(Paragraph("<b>Assessment:</b>", risk_body_style))
@@ -401,8 +407,9 @@ trusted Token Program"""
         elements.append(Paragraph("N/A", risk_body_style))
 
         # Permanent Delegate Check
-        elements.append(Spacer(1, 15))
-        elements.append(Paragraph("No Permanent Delegate", risk_subheader_style))
+        has_no_delegate = token_data.get('permanent_delegate', 'None') == 'None'
+        delegate_header = f"""{'1' if has_no_delegate else '5'} | No Permanent Delegate {'- Pass' if has_no_delegate else '- Fail'}"""
+        elements.append(Paragraph(delegate_header, risk_subheader_style))
         delegate_description = """Permanent Delegate means that it is set to null and therefore Therefore, no delegate can burn or transfer any amount of tokens."""
         elements.append(Paragraph(delegate_description, risk_body_style))
         elements.append(Paragraph("<b>Assessment:</b>", risk_body_style))
@@ -415,8 +422,10 @@ trusted Token Program"""
         elements.append(Paragraph("N/A", risk_body_style))
         
         # Transaction Fees Check
-        elements.append(Spacer(1, 15))
-        elements.append(Paragraph("Transaction Fees", risk_subheader_style))
+        fees_value = token_data.get('transaction_fees', 'None')
+        has_no_fees = fees_value == 'None' or fees_value == '0' or fees_value == 0
+        fees_header = f"""{'1' if has_no_fees else '5'} | No Transaction Fees {'- Pass' if has_no_fees else '- Fail'}"""
+        elements.append(Paragraph(fees_header, risk_subheader_style))
         transaction_fees_description = """Transaction fees are set to 0 and therefore no transaction fees are possible and send/receive token amounts are the same as expected."""
         elements.append(Paragraph(transaction_fees_description, risk_body_style))
         elements.append(Paragraph("<b>Assessment:</b>", risk_body_style))
@@ -429,8 +438,10 @@ trusted Token Program"""
         elements.append(Paragraph("N/A", risk_body_style))
         
         # Transfer Hook Check
-        elements.append(Spacer(1, 15))
-        elements.append(Paragraph("Transfer Hook", risk_subheader_style))
+        has_no_hook = token_data.get('transfer_hook', 'None') == 'None'
+        hook_header = f"""{'1' if has_no_hook else '5'} | No Transfer Hook {'- Pass' if has_no_hook else '- Fail'}"""
+        elements.append(Paragraph(hook_header, risk_subheader_style))
+        
         transfer_hook_description = """A missing TransferHook means that it is set to null and therefore does not communicate with a custom program whenever this token is transferred."""
         elements.append(Paragraph(transfer_hook_description, risk_body_style))
         elements.append(Paragraph("<b>Assessment:</b>", risk_body_style))
@@ -443,8 +454,9 @@ trusted Token Program"""
         elements.append(Paragraph("N/A", risk_body_style))
         
         # Confidential Transfers Check
-        elements.append(Spacer(1, 15))
-        elements.append(Paragraph("Confidential Transfers", risk_subheader_style))
+        has_no_confidential = token_data.get('confidential_transfers', 'None') == 'None'
+        confidential_header = f"""{'1' if has_no_confidential else '5'} | No Confidential Transfers {'- Pass' if has_no_confidential else '- Fail'}"""
+        elements.append(Paragraph(confidential_header, risk_subheader_style))
         confidential_transfers_description = """The confidential transfer is a non-anonymous, non-private transfer that publicly shares the source, destination, and token type, but uses zero-knowledge proofs to encrypt the amount of the transfer."""
         elements.append(Paragraph(confidential_transfers_description, risk_body_style))
         elements.append(Paragraph("<b>Assessment:</b>", risk_body_style))
