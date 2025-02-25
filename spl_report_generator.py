@@ -6,6 +6,10 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from docx import Document
+from docx.shared import Inches, Pt
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.table import WD_ALIGN_VERTICAL
 
 def create_styles():
     styles = getSampleStyleSheet()
@@ -116,12 +120,52 @@ def create_pdf(token_data, output_dir):
     styles, title_style, cell_style, context_style, header_style = create_styles()
     elements = []
     
-    # Title with better spacing and error handling
+    # Add confidentiality notice
+    confidentiality_style = ParagraphStyle(
+        'Confidentiality',
+        parent=styles['Normal'],
+        fontSize=8,
+        textColor=colors.grey,
+        alignment=0,  # Left alignment
+        fontName='Helvetica-Oblique'
+    )
+    elements.append(Paragraph(
+        "Confidential treatment requested under NY Banking Law § 36.10 and NY Pub. Off. Law § 87.2(d).",
+        confidentiality_style
+    ))
+    elements.append(Spacer(1, 20))
+    
+    # Add title
     title = Paragraph(
         f"Solana Token Security Assessment:<br/>{token_name} ({token_symbol})", 
         title_style
     )
     elements.append(title)
+    elements.append(Spacer(1, 20))
+    
+    # Add conflicts certification with reviewer info
+    conflicts_style = ParagraphStyle(
+        'Conflicts',
+        parent=styles['Normal'],
+        fontSize=11,
+        spaceAfter=12,
+        leading=14,  # Line spacing
+        alignment=4,  # Justified text
+        fontName='Helvetica'
+    )
+    conflicts_text = """<b>Conflicts Certification:</b> To the best of your knowledge, please confirm that you and your immediate family: (1) have not invested more than $10,000 in the asset or its issuer, (2) do not own more than 1% of the asset outstanding, and (3) do not have a personal relationship with the issuer's management, governing body, or owners. For wrapped assets, the underlying asset must be considered for the purpose of this conflict certification, unless: 1) the asset is a stablecoin; or 2) has a market cap of over $100 billion dollars. For multi-chain assets every version of the multi-chain asset must be counted together for the purpose of this conflict certification."""
+    elements.append(Paragraph(conflicts_text, conflicts_style))
+    elements.append(Spacer(1, 10))
+    
+    # Add reviewer confirmation
+    reviewer_name = token_data.get('reviewer_name', 'Noama Samreen')
+    confirmation_status = token_data.get('confirmation_status', 'Confirmed')
+    
+    reviewer_confirmation = [
+        [Paragraph("Reviewer:", cell_style), Paragraph(reviewer_name, cell_style)],
+        [Paragraph("Status:", cell_style), Paragraph(confirmation_status, cell_style)]
+    ]
+    elements.append(create_basic_table(reviewer_confirmation, cell_style))
     elements.append(Spacer(1, 30))
     
     # Basic information table with wrapped text
@@ -244,3 +288,168 @@ trusted Token Program"""
     # Build PDF
     doc.build(elements)
     return filepath
+
+def create_doc(token_data, output_dir):
+    """Generate DOCX for a single token"""
+    # Handle missing or invalid name/symbol
+    token_name = token_data.get('name', 'Unknown')
+    if token_name in ['N/A', None, '']:
+        token_name = 'Unknown'
+    
+    token_symbol = token_data.get('symbol', 'UNKNOWN')
+    if token_symbol in ['N/A', None, '']:
+        token_symbol = 'UNKNOWN'
+    
+    filename = f"{token_name} ({token_symbol}) Security Memo.docx"
+    filename = "".join(c for c in filename if c.isalnum() or c in (' ', '-', '_', '(', ')', '.'))
+    filepath = os.path.join(output_dir, filename)
+    
+    doc = Document()
+    
+    # Add confidentiality notice
+    confidentiality = doc.add_paragraph()
+    confidentiality.add_run("Confidential treatment requested under NY Banking Law § 36.10 and NY Pub. Off. Law § 87.2(d).").italic = True
+    doc.add_paragraph()
+    
+    # Title
+    title = doc.add_heading(f"Solana Token Security Assessment:\n{token_name} ({token_symbol})", level=1)
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    doc.add_paragraph()
+    
+    # Add conflicts certification with reviewer info
+    conflicts = doc.add_paragraph()
+    conflicts.add_run("Conflicts Certification: ").bold = True
+    conflicts.add_run("To the best of your knowledge, please confirm that you and your immediate family: (1) have not invested more than $10,000 in the asset or its issuer, (2) do not own more than 1% of the asset outstanding, and (3) do not have a personal relationship with the issuer's management, governing body, or owners. For wrapped assets, the underlying asset must be considered for the purpose of this conflict certification, unless: 1) the asset is a stablecoin; or 2) has a market cap of over $100 billion dollars. For multi-chain assets every version of the multi-chain asset must be counted together for the purpose of this conflict certification.")
+    doc.add_paragraph()
+    
+    # Add reviewer confirmation
+    reviewer_name = token_data.get('reviewer_name', 'Noama Samreen')
+    confirmation_status = token_data.get('confirmation_status', 'Confirmed')
+    
+    reviewer_table = doc.add_table(rows=2, cols=2)
+    reviewer_table.style = 'Table Grid'
+    
+    reviewer_cells = reviewer_table.rows[0].cells
+    reviewer_cells[0].text = "Reviewer:"
+    reviewer_cells[1].text = reviewer_name
+    
+    status_cells = reviewer_table.rows[1].cells
+    status_cells[0].text = "Status:"
+    status_cells[1].text = confirmation_status
+    
+    doc.add_paragraph()
+    
+    # Basic information table
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    profile = "SPL Token 2022 Standard" if "Token 2022" in token_data['owner_program'] else "SPL Token Standard"
+    
+    table = doc.add_table(rows=5, cols=2)
+    table.style = 'Table Grid'
+    
+    data = [
+        ["Reviewer", "Noama Samreen"],
+        ["Profile", profile],
+        ["Review Date", current_date],
+        ["Network", "Solana"],
+        ["Address", token_data['address']]
+    ]
+    
+    for i, (key, value) in enumerate(data):
+        row = table.rows[i]
+        row.cells[0].text = key
+        row.cells[1].text = value
+    
+    doc.add_paragraph()
+    
+    # Context
+    context = doc.add_paragraph()
+    context.add_run("Solana SPL Token Review Context: ").bold = True
+    context.add_run("Solana tokens do not possess customizable code per asset. Rather, a single "program" generates boiler template tokens with distinct states for each newly created token. Therefore, examining the base program configurations is adequate for reviewing all other tokens associated with it. The 'Token Program' adheres to standard practices, undergoing thorough review and auditing procedures. Therefore, within this review process, the focus remains on validating token configurations specific to tokens managed by the trusted Token Program")
+    doc.add_paragraph()
+    
+    # Recommendation
+    security_review = token_data.get('security_review', 'UNKNOWN')
+    if security_review in ['N/A', None, '']:
+        security_review = 'UNKNOWN'
+    
+    recommendation = doc.add_paragraph()
+    rec_text = f"{token_name} ({token_symbol}) {'is' if security_review == 'PASSED' else 'is not'} recommended for listing."
+    recommendation.add_run(rec_text).bold = True
+    doc.add_paragraph()
+    
+    # Risk scores
+    risk_table = doc.add_table(rows=2, cols=2)
+    risk_table.style = 'Table Grid'
+    
+    risk_data = [
+        ["Residual Security Risk Score:", str(token_data.get('residual_risk_score', 'N/A'))],
+        ["Inherent Security Risk Score:", str(token_data.get('inherent_risk_score', 'N/A'))]
+    ]
+    
+    for i, (key, value) in enumerate(risk_data):
+        row = risk_table.rows[i]
+        row.cells[0].text = key
+        row.cells[1].text = value
+    
+    doc.add_paragraph()
+    
+    # Additional details table
+    details_table = doc.add_table(rows=1, cols=2)
+    details_table.style = 'Table Grid'
+    header_cells = details_table.rows[0].cells
+    header_cells[0].text = 'Field'
+    header_cells[1].text = 'Value'
+    
+    field_order = [
+        'owner_program',
+        'freeze_authority',
+        'update_authority'
+    ]
+    
+    if "Token 2022" in token_data.get('owner_program', ''):
+        field_order.extend([
+            'permanent_delegate',
+            'transaction_fees',
+            'transfer_hook',
+            'confidential_transfers'
+        ])
+    
+    if "Pump.Fun Mint Authority" in str(token_data.get('update_authority', '')):
+        field_order.extend([
+            'is_genuine_pump_fun_token',
+            'interacted_with',
+            'token_graduated_to_raydium'
+        ])
+        if token_data.get('interacting_account') or token_data.get('interaction_signature'):
+            field_order.extend([
+                'interacting_account',
+                'interaction_signature'
+            ])
+    
+    for field in field_order:
+        value = token_data.get(field, 'None')
+        if value in ['N/A', None, '']:
+            value = 'None'
+        if isinstance(value, bool):
+            value = str(value)
+        display_name = str(field).replace('_', ' ').title()
+        row_cells = details_table.add_row().cells
+        row_cells[0].text = display_name
+        row_cells[1].text = str(value)
+    
+    # Add security review as last row
+    row_cells = details_table.add_row().cells
+    row_cells[0].text = 'Security Review'
+    row_cells[1].text = security_review
+    
+    doc.save(filepath)
+    return filepath
+
+def generate_reports(token_data, output_dir):
+    """Generate both PDF and DOCX reports"""
+    pdf_path = create_pdf(token_data, output_dir)
+    doc_path = create_doc(token_data, output_dir)
+    return pdf_path, doc_path
+
+if __name__ == '__main__':
+    pdf_path, doc_path = generate_reports(token_data, output_dir)
