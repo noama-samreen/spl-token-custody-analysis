@@ -118,7 +118,6 @@ with tab1:
     st.markdown("---")
     
     # Reviewer information below address
-    st.subheader("Reviewer Information")
     reviewer_col1, reviewer_col2 = st.columns(2)
     with reviewer_col1:
         reviewer_name = st.text_input("Reviewer Name", value="Noama Samreen", key="reviewer_name")
