@@ -375,7 +375,7 @@ trusted Token Program"""
     # Assessment
     elements.append(Paragraph("<b>Assessment:</b>", risk_body_style))
     elements.append(Paragraph(
-        f"""As token metadata indicates, there exists {token_data.get('freeze_authority', 'no freeze authority')}.""",
+        f"""As token metadata indicates, the freeze authority is: {token_data.get('freeze_authority', 'no freeze authority')}.""",
         risk_body_style
     ))
     elements.append(Spacer(1, 8))
@@ -393,7 +393,7 @@ trusted Token Program"""
         elements.append(Paragraph(update_description, risk_body_style))
         elements.append(Paragraph("<b>Assessment:</b>", risk_body_style))
         elements.append(Paragraph(
-            f"""As token metadata indicates, there exists {token_data.get('update_authority', 'no update authority')}.""",
+            f"""As token metadata indicates, the update authority is: {token_data.get('update_authority', 'no update authority')}.""",
             risk_body_style
         ))
         elements.append(Spacer(1, 8))
@@ -407,7 +407,7 @@ trusted Token Program"""
         elements.append(Paragraph(delegate_description, risk_body_style))
         elements.append(Paragraph("<b>Assessment:</b>", risk_body_style))
         elements.append(Paragraph(
-            f"""As token metadata indicates, there exists {token_data.get('permanent_delegate', 'no permanent delegate')}.""",
+            f"""As token metadata indicates, the permanent delegate is: {token_data.get('permanent_delegate', 'no permanent delegate')}.""",
             risk_body_style
         ))
         elements.append(Spacer(1, 8))
@@ -421,7 +421,7 @@ trusted Token Program"""
         elements.append(Paragraph(transaction_fees_description, risk_body_style))
         elements.append(Paragraph("<b>Assessment:</b>", risk_body_style))
         elements.append(Paragraph(
-            f"""As token metadata indicates, there exists {token_data.get('transaction_fees', 'no transaction fees')}.""",
+            f"""As token metadata indicates, the transaction fees are: {token_data.get('transaction_fees', 'no transaction fees')}.""",
             risk_body_style
         ))
         elements.append(Spacer(1, 8))
@@ -435,7 +435,7 @@ trusted Token Program"""
         elements.append(Paragraph(transfer_hook_description, risk_body_style))
         elements.append(Paragraph("<b>Assessment:</b>", risk_body_style))
         elements.append(Paragraph(
-            f"""As token metadata indicates, there exists {token_data.get('transfer_hook', 'no transfer hook')}.""",
+            f"""As token metadata indicates, the transfer hook is: {token_data.get('transfer_hook', 'no transfer hook')}.""",
             risk_body_style
         ))
         elements.append(Spacer(1, 8))
@@ -449,7 +449,7 @@ trusted Token Program"""
         elements.append(Paragraph(confidential_transfers_description, risk_body_style))
         elements.append(Paragraph("<b>Assessment:</b>", risk_body_style))
         elements.append(Paragraph(
-            f"""As token metadata indicates, there exists {token_data.get('confidential_transfers', 'no confidential transfers')}.""",
+            f"""As token metadata indicates, the confidential transfers are: {token_data.get('confidential_transfers', 'no confidential transfers')}.""",
             risk_body_style
         ))
         elements.append(Spacer(1, 8))
