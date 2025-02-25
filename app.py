@@ -222,6 +222,19 @@ with tab1:
                     )
 
 with tab2:
+    # Reviewer information first
+    reviewer_col1, reviewer_col2 = st.columns(2)
+    with reviewer_col1:
+        reviewer_name = st.text_input("Reviewer Name", value="Noama Samreen", key="batch_reviewer_name")
+    with reviewer_col2:
+        confirmation_status = st.radio(
+            "Conflicts Certification Status",
+            options=["Confirmed", "Denied"],
+            horizontal=True,
+            key="batch_confirmation_status"
+        )
+
+    # File upload section
     col1, col2 = st.columns([3, 1])
     with col1:
         uploaded_file = st.file_uploader(
@@ -229,17 +242,12 @@ with tab2:
             type="txt",
             help="File should contain one Solana token address per line"
         )
-    with col2:
-        if st.button("Reset", key="reset_batch"):
-            st.session_state.batch_results = None
-            uploaded_file = None
-            st.experimental_rerun()
     
     if uploaded_file:
         addresses = [line.decode().strip() for line in uploaded_file if line.decode().strip()]
         st.info(f"Found {len(addresses)} addresses in file")
         
-        if st.button("Process Batch", key="batch_process"):
+        if st.button("Process Batch", key="batch_process", use_container_width=True):
             progress_bar = st.progress(0)
             status_text = st.empty()
             
@@ -254,6 +262,11 @@ with tab2:
             
             try:
                 results = asyncio.run(process_batch())
+                # Add reviewer information to each result
+                for result in results:
+                    if result['status'] == 'success':
+                        result['reviewer_name'] = reviewer_name
+                        result['confirmation_status'] = confirmation_status
                 st.session_state.batch_results = results
                 st.success(f"Successfully processed {len(results)} tokens")
             except Exception as e:
