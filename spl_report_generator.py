@@ -299,17 +299,17 @@ trusted Token Program"""
         ])
     
     # Add pump.fun specific fields if applicable
-    if "Pump.Fun Mint Authority" in str(token_data.get('update_authority', '')):
-        field_order.extend([
-            'is_genuine_pump_fun_token',
-            'interacted_with',
-            'token_graduated_to_raydium'
-        ])
-        if token_data.get('interacting_account') or token_data.get('interaction_signature'):
-            field_order.extend([
-                'interacting_account',
-                'interaction_signature'
-            ])
+   # if "Pump.Fun Mint Authority" in str(token_data.get('update_authority', '')):
+    #    field_order.extend([
+    #        'is_genuine_pump_fun_token',
+    #        'interacted_with',
+    #        'token_graduated_to_raydium'
+    #    ])
+    #    if token_data.get('interacting_account') or token_data.get('interaction_signature'):
+    #        field_order.extend([
+    #            'interacting_account',
+    #            'interaction_signature'
+    #        ])
     
     # Add fields in specified order
     for field in field_order:
