@@ -3,7 +3,7 @@ import asyncio
 import aiohttp
 import json
 from spl_token_analysis import get_token_details_async, process_tokens_concurrently
-from spl_report_generator import generate_reports
+from spl_report_generator import create_pdf
 import tempfile
 import os
 import zipfile
@@ -200,25 +200,13 @@ with tab1:
         
         with col2:
             with tempfile.TemporaryDirectory() as temp_dir:
-                # Generate both PDF and DOCX
-                pdf_path, doc_path = generate_reports(result_dict, temp_dir)
-                
-                # PDF download button
+                pdf_path = create_pdf(result_dict, temp_dir)
                 with open(pdf_path, "rb") as pdf_file:
                     st.download_button(
                         "Download PDF",
                         data=pdf_file.read(),
                         file_name=f"token_analysis_{token_address}.pdf",
                         mime="application/pdf"
-                    )
-                
-                # DOCX download button
-                with open(doc_path, "rb") as doc_file:
-                    st.download_button(
-                        "Download DOCX",
-                        data=doc_file.read(),
-                        file_name=f"token_analysis_{token_address}.docx",
-                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     )
 
 with tab2:
@@ -296,7 +284,7 @@ with tab2:
                 with zipfile.ZipFile(zip_path, 'w') as zipf:
                     for result in results:
                         if result['status'] == 'success':
-                            pdf_path = generate_reports(result, temp_dir)[0]
+                            pdf_path = create_pdf(result, temp_dir)
                             zipf.write(pdf_path, os.path.basename(pdf_path))
                 
                 with open(zip_path, "rb") as zip_file:
