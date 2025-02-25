@@ -141,6 +141,11 @@ def create_pdf(token_data, output_dir):
     styles, title_style, cell_style, context_style, header_style, confidentiality_style, conflicts_style = create_styles()
     elements = []
     
+    # Add confidentiality notice
+    confidentiality_text = "Confidential treatment requested under NY Banking Law § 36.10 and NY Pub. Off. Law § 87.2(d)."
+    elements.append(Paragraph(confidentiality_text, confidentiality_style))
+    elements.append(Spacer(1, 20))
+    
     # Title with better spacing and error handling
     title = Paragraph(
         f"Solana Token Security Assessment:<br/>{token_name} ({token_symbol})", 
@@ -149,7 +154,21 @@ def create_pdf(token_data, output_dir):
     elements.append(title)
     elements.append(Spacer(1, 30))
     
-    # Basic information table with wrapped text
+    # Add conflicts certification before basic information
+    conflicts_text = """<b>Conflicts Certification:</b> To the best of your knowledge, please confirm that you and your immediate family: (1) have not invested more than $10,000 in the asset or its issuer, (2) do not own more than 1% of the asset outstanding, and (3) do not have a personal relationship with the issuer's management, governing body, or owners. For wrapped assets, the underlying asset must be considered for the purpose of this conflict certification, unless: 1) the asset is a stablecoin; or 2) has a market cap of over $100 billion dollars. For multi-chain assets every version of the multi-chain asset must be counted together for the purpose of this conflict certification."""
+    
+    elements.append(Paragraph(conflicts_text, conflicts_style))
+    elements.append(Spacer(1, 10))
+    
+    # Add reviewer confirmation
+    reviewer_confirmation = [
+        [Paragraph("Reviewer:", cell_style), Paragraph("Noama Samreen", cell_style)],
+        [Paragraph("Status:", cell_style), Paragraph("Confirmed", cell_style)]
+    ]
+    elements.append(create_basic_table(reviewer_confirmation, cell_style))
+    elements.append(Spacer(1, 30))
+    
+    # Basic information table
     current_date = datetime.now().strftime("%Y-%m-%d")
     profile = "SPL Token 2022 Standard" if "Token 2022" in token_data['owner_program'] else "SPL Token Standard"
     
@@ -162,25 +181,6 @@ def create_pdf(token_data, output_dir):
     ]
     
     elements.append(create_basic_table(data, cell_style))
-    elements.append(Spacer(1, 30))
-    
-    # Add confidentiality notice
-    confidentiality_text = "Confidential treatment requested under NY Banking Law § 36.10 and NY Pub. Off. Law § 87.2(d)."
-    elements.append(Paragraph(confidentiality_text, confidentiality_style))
-    elements.append(Spacer(1, 20))
-    
-    # Add conflicts certification before context text
-    conflicts_text = """<b>Conflicts Certification:</b> To the best of your knowledge, please confirm that you and your immediate family: (1) have not invested more than $10,000 in the asset or its issuer, (2) do not own more than 1% of the asset outstanding, and (3) do not have a personal relationship with the issuer's management, governing body, or owners. For wrapped assets, the underlying asset must be considered for the purpose of this conflict certification, unless: 1) the asset is a stablecoin; or 2) has a market cap of over $100 billion dollars. For multi-chain assets every version of the multi-chain asset must be counted together for the purpose of this conflict certification."""
-    
-    elements.append(Paragraph(conflicts_text, conflicts_style))
-    elements.append(Spacer(1, 10))
-    
-    # Add reviewer confirmation
-    reviewer_confirmation = [
-        [Paragraph("Reviewer:", cell_style), Paragraph("Noama Samreen", cell_style)],
-        [Paragraph("Status:", cell_style), Paragraph("Confirmed", cell_style)]
-    ]
-    elements.append(create_basic_table(reviewer_confirmation, cell_style))
     elements.append(Spacer(1, 30))
     
     # Context text
@@ -200,10 +200,8 @@ trusted Token Program"""
     if security_review in ['N/A', None, '']:
         security_review = 'UNKNOWN'
     
-    recommendation = (
-        f"<b>{token_name} ({token_symbol}) "
-        f"{'is' if security_review == 'PASSED' else 'is not'} recommended for listing.</b>"
-    )
+    recommendation = f"{token_name} ({token_symbol}) {'is' if security_review == 'PASSED' else 'is not'} recommended for listing."
+    
     elements.append(Paragraph(recommendation, ParagraphStyle(
         'CustomRecommendation',
         parent=context_style,
