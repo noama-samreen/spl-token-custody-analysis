@@ -203,10 +203,13 @@ trusted Token Program"""
     elements.append(Paragraph(context_text, context_style))
     elements.append(Spacer(1, 25))
     
-    # Recommendation with error handling
+    # Recommendation with error handling and risk scores
     security_review = token_data.get('security_review', 'UNKNOWN')
     if security_review in ['N/A', None, '']:
         security_review = 'UNKNOWN'
+    
+    # Determine risk scores based on security review
+    risk_score = 1 if security_review == 'PASSED' else 5
     
     recommendation = (
         f"<b>{token_name} ({token_symbol}) "
@@ -218,6 +221,26 @@ trusted Token Program"""
         fontSize=12,
         textColor=colors.HexColor('#006400') if security_review == 'PASSED' else colors.red
     )))
+    elements.append(Spacer(1, 15))
+    
+    # Add risk scores
+    risk_style = ParagraphStyle(
+        'RiskScore',
+        parent=styles['Normal'],
+        fontSize=11,
+        spaceAfter=6,
+        leading=14,
+        fontName='Helvetica'
+    )
+    
+    elements.append(Paragraph(
+        f"<b>Residual Security Risk Score:</b> {risk_score}",
+        risk_style
+    ))
+    elements.append(Paragraph(
+        f"<b>Inherent Security Risk Score:</b> {risk_score}",
+        risk_style
+    ))
     elements.append(Spacer(1, 25))
     
     # Additional details table
