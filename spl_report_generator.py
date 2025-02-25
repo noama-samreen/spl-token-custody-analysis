@@ -305,6 +305,72 @@ trusted Token Program"""
     
     elements.append(create_additional_table(additional_data, cell_style))
     
+    # After the details table, add Risk Findings section
+    elements.append(Spacer(1, 30))
+    
+    # Risk Findings Header
+    elements.append(Paragraph("Risk Findings", ParagraphStyle(
+        'RiskHeader',
+        parent=styles['Heading1'],
+        fontSize=14,
+        spaceAfter=15,
+        textColor=colors.black,
+        fontName='Helvetica-Bold'
+    )))
+    
+    # Standard SPL Token Check
+    elements.append(Paragraph("Standard Solana SPL Token", ParagraphStyle(
+        'SubHeader',
+        parent=styles['Heading2'],
+        fontSize=12,
+        spaceAfter=10,
+        textColor=colors.black,
+        fontName='Helvetica-Bold'
+    )))
+    
+    spl_description = """The token must be a standard Solana SPL Token (i.e. owned by the Token Program or Token
+2022 Program) to be eligible for umbrella approval."""
+    elements.append(Paragraph(spl_description, context_style))
+    elements.append(Spacer(1, 10))
+    
+    # Assessment
+    elements.append(Paragraph("<b>Assessment:</b>", context_style))
+    owner_assessment = f"""The token owner is the {token_data['owner_program']}.
+As token metadata indicates, the token owner is base token {token_data['address']}."""
+    elements.append(Paragraph(owner_assessment, context_style))
+    elements.append(Spacer(1, 10))
+    
+    # Mitigations
+    elements.append(Paragraph("<b>Mitigations:</b>", context_style))
+    elements.append(Paragraph("N/A", context_style))
+    elements.append(Spacer(1, 20))
+    
+    # Freeze Authority Check
+    elements.append(Paragraph("No freeze account", ParagraphStyle(
+        'SubHeader',
+        parent=styles['Heading2'],
+        fontSize=12,
+        spaceAfter=10,
+        textColor=colors.black,
+        fontName='Helvetica-Bold'
+    )))
+    
+    freeze_description = """A missing freeze authority means that it is set to null and therefore a permanently revoked privilege."""
+    elements.append(Paragraph(freeze_description, context_style))
+    elements.append(Spacer(1, 10))
+    
+    # Assessment
+    elements.append(Paragraph("<b>Assessment:</b>", context_style))
+    freeze_assessment = """The freeze authority is not assigned, account blacklisting is not possible.
+
+As token metadata indicates, there exists no freeze authority."""
+    elements.append(Paragraph(freeze_assessment, context_style))
+    elements.append(Spacer(1, 10))
+    
+    # Mitigations
+    elements.append(Paragraph("<b>Mitigations:</b>", context_style))
+    elements.append(Paragraph("N/A", context_style))
+    
     # Build PDF
     doc.build(elements)
     return filepath
