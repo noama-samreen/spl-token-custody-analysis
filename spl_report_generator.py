@@ -285,13 +285,13 @@ trusted Token Program"""
     # Base fields for all tokens
     field_order = [
         'owner_program',
-        'freeze_authority',
-        'update_authority'
+        'freeze_authority'
     ]
     
     # Add Token 2022 specific fields if applicable
     if "Token 2022" in token_data.get('owner_program', ''):
         field_order.extend([
+            'update_authority',
             'permanent_delegate',
             'transaction_fees',
             'transfer_hook',
