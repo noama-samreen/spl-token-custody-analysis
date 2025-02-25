@@ -374,7 +374,7 @@ trusted Token Program"""
     
     # Assessment
     elements.append(Paragraph("<b>Assessment:</b>", risk_body_style))
-    freeze_assessment = """The Freeze Authority is not assigned, account blacklisting is not possible. As token metadata indicates, there exists no freeze authority."""
+    freeze_assessment = """As token metadata indicates, there exists no freeze authority. Therefore, account blacklisting is not possible."""
     elements.append(Paragraph(freeze_assessment, risk_body_style))
     elements.append(Spacer(1, 8))
     
@@ -390,7 +390,7 @@ trusted Token Program"""
         update_description = """A missing Update Authority means that the token configuration can't be altered."""
         elements.append(Paragraph(update_description, risk_body_style))
         elements.append(Paragraph("<b>Assessment:</b>", risk_body_style))
-        update_assessment = """The Update Authority is not assigned, token configuration change is not possible. As token metadata indicates, there exists no update authority."""
+        update_assessment = """As token metadata indicates, there exists no update authority. Therefore, token configuration change is not possible."""
         elements.append(Paragraph(update_assessment, risk_body_style))
         elements.append(Spacer(1, 8))
         elements.append(Paragraph("<b>Mitigations:</b>", risk_body_style))
@@ -402,7 +402,7 @@ trusted Token Program"""
         delegate_description = """Permanent Delegate means that it is set to null and therefore a permanently revoked privilege."""
         elements.append(Paragraph(delegate_description, risk_body_style))
         elements.append(Paragraph("<b>Assessment:</b>", risk_body_style))
-        delegate_assessment = """The Permanent Delegate authority is not assigned, account blacklisting etc is not possible. As token metadata indicates, there exists no permanent delegate."""
+        delegate_assessment = """As token metadata indicates, there exists no permanent delegate. Therefore, no delegate can burn or transfer any amount of tokens."""
         elements.append(Paragraph(delegate_assessment, risk_body_style))
         elements.append(Spacer(1, 8))
         elements.append(Paragraph("<b>Mitigations:</b>", risk_body_style))
