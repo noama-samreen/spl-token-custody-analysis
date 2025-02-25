@@ -312,7 +312,7 @@ trusted Token Program"""
     elements.append(Paragraph("Risk Findings", ParagraphStyle(
         'RiskHeader',
         parent=styles['Heading1'],
-        fontSize=14,
+        fontSize=16,
         spaceAfter=15,
         textColor=colors.black,
         fontName='Helvetica-Bold'
@@ -322,8 +322,8 @@ trusted Token Program"""
     elements.append(Paragraph("Standard Solana SPL Token", ParagraphStyle(
         'SubHeader',
         parent=styles['Heading2'],
-        fontSize=12,
-        spaceAfter=10,
+        fontSize=14,
+        spaceAfter=8,
         textColor=colors.black,
         fontName='Helvetica-Bold'
     )))
@@ -331,33 +331,32 @@ trusted Token Program"""
     spl_description = """The token must be a standard Solana SPL Token (i.e. owned by the Token Program or Token
 2022 Program) to be eligible for umbrella approval."""
     elements.append(Paragraph(spl_description, context_style))
-    elements.append(Spacer(1, 10))
+    elements.append(Spacer(1, 8))
     
     # Assessment
     elements.append(Paragraph("<b>Assessment:</b>", context_style))
-    owner_assessment = f"""The token owner is the {token_data['owner_program']}.
-As token metadata indicates, the token owner is base token {token_data['address']}."""
+    owner_assessment = f"""As token metadata indicates, the token owner is the {token_data['owner_program']}."""
     elements.append(Paragraph(owner_assessment, context_style))
-    elements.append(Spacer(1, 10))
+    elements.append(Spacer(1, 8))
     
     # Mitigations
     elements.append(Paragraph("<b>Mitigations:</b>", context_style))
     elements.append(Paragraph("N/A", context_style))
-    elements.append(Spacer(1, 20))
+    elements.append(Spacer(1, 15))
     
     # Freeze Authority Check
     elements.append(Paragraph("No freeze account", ParagraphStyle(
         'SubHeader',
         parent=styles['Heading2'],
-        fontSize=12,
-        spaceAfter=10,
+        fontSize=14,
+        spaceAfter=8,
         textColor=colors.black,
         fontName='Helvetica-Bold'
     )))
     
     freeze_description = """A missing freeze authority means that it is set to null and therefore a permanently revoked privilege."""
     elements.append(Paragraph(freeze_description, context_style))
-    elements.append(Spacer(1, 10))
+    elements.append(Spacer(1, 8))
     
     # Assessment
     elements.append(Paragraph("<b>Assessment:</b>", context_style))
@@ -365,7 +364,7 @@ As token metadata indicates, the token owner is base token {token_data['address'
 
 As token metadata indicates, there exists no freeze authority."""
     elements.append(Paragraph(freeze_assessment, context_style))
-    elements.append(Spacer(1, 10))
+    elements.append(Spacer(1, 8))
     
     # Mitigations
     elements.append(Paragraph("<b>Mitigations:</b>", context_style))
