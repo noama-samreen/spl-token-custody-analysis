@@ -39,7 +39,9 @@ def create_styles():
         spaceAfter=12,
         leading=16,  # Increased line spacing
         alignment=4,  # Justified text
-        fontName='Helvetica'
+        fontName='Helvetica',
+        leftIndent=0,  # No left indent
+        rightIndent=0  # No right indent
     )
     
     # Header style for table headers
@@ -52,7 +54,41 @@ def create_styles():
         alignment=0  # Left alignment
     )
     
-    return styles, title_style, cell_style, context_style, header_style
+    # Risk Findings styles
+    risk_header_style = ParagraphStyle(
+        'RiskHeader',
+        parent=styles['Heading1'],
+        fontSize=16,
+        spaceAfter=15,
+        textColor=colors.black,
+        fontName='Helvetica-Bold',
+        alignment=0,  # Left alignment
+        leading=20
+    )
+    
+    risk_subheader_style = ParagraphStyle(
+        'RiskSubHeader',
+        parent=styles['Heading2'],
+        fontSize=14,
+        spaceAfter=8,
+        textColor=colors.black,
+        fontName='Helvetica-Bold',
+        alignment=0,  # Left alignment
+        leading=18
+    )
+    
+    risk_body_style = ParagraphStyle(
+        'RiskBody',
+        parent=styles['Normal'],
+        fontSize=11,
+        spaceAfter=8,
+        leading=14,
+        alignment=4,  # Justified
+        fontName='Helvetica',
+        leftIndent=0
+    )
+
+    return styles, title_style, cell_style, context_style, header_style, risk_header_style, risk_subheader_style, risk_body_style
 
 def create_basic_table(data, cell_style):
     """Create and style the basic information table"""
@@ -112,7 +148,7 @@ def create_pdf(token_data, output_dir):
         bottomMargin=72
     )
     
-    styles, title_style, cell_style, context_style, header_style = create_styles()
+    styles, title_style, cell_style, context_style, header_style, risk_header_style, risk_subheader_style, risk_body_style = create_styles()
     elements = []
     
     # Title first
@@ -309,66 +345,43 @@ trusted Token Program"""
     elements.append(Spacer(1, 30))
     
     # Risk Findings Header
-    elements.append(Paragraph("Risk Findings", ParagraphStyle(
-        'RiskHeader',
-        parent=styles['Heading1'],
-        fontSize=16,
-        spaceAfter=15,
-        textColor=colors.black,
-        fontName='Helvetica-Bold'
-    )))
+    elements.append(Paragraph("Risk Findings", risk_header_style))
     
     # Standard SPL Token Check
-    elements.append(Paragraph("Standard Solana SPL Token", ParagraphStyle(
-        'SubHeader',
-        parent=styles['Heading2'],
-        fontSize=14,
-        spaceAfter=8,
-        textColor=colors.black,
-        fontName='Helvetica-Bold'
-    )))
+    elements.append(Paragraph("Standard Solana SPL Token", risk_subheader_style))
     
     spl_description = """The token must be a standard Solana SPL Token (i.e. owned by the Token Program or Token
 2022 Program) to be eligible for umbrella approval."""
-    elements.append(Paragraph(spl_description, context_style))
+    elements.append(Paragraph(spl_description, risk_body_style))
     elements.append(Spacer(1, 8))
     
     # Assessment
-    elements.append(Paragraph("<b>Assessment:</b>", context_style))
+    elements.append(Paragraph("<b>Assessment:</b>", risk_body_style))
     owner_assessment = f"""As token metadata indicates, the token owner is the {token_data['owner_program']}."""
-    elements.append(Paragraph(owner_assessment, context_style))
+    elements.append(Paragraph(owner_assessment, risk_body_style))
     elements.append(Spacer(1, 8))
     
     # Mitigations
-    elements.append(Paragraph("<b>Mitigations:</b>", context_style))
-    elements.append(Paragraph("N/A", context_style))
+    elements.append(Paragraph("<b>Mitigations:</b>", risk_body_style))
+    elements.append(Paragraph("N/A", risk_body_style))
     elements.append(Spacer(1, 15))
     
     # Freeze Authority Check
-    elements.append(Paragraph("No freeze account", ParagraphStyle(
-        'SubHeader',
-        parent=styles['Heading2'],
-        fontSize=14,
-        spaceAfter=8,
-        textColor=colors.black,
-        fontName='Helvetica-Bold'
-    )))
+    elements.append(Paragraph("No freeze account", risk_subheader_style))
     
     freeze_description = """A missing freeze authority means that it is set to null and therefore a permanently revoked privilege."""
-    elements.append(Paragraph(freeze_description, context_style))
+    elements.append(Paragraph(freeze_description, risk_body_style))
     elements.append(Spacer(1, 8))
     
     # Assessment
-    elements.append(Paragraph("<b>Assessment:</b>", context_style))
-    freeze_assessment = """The freeze authority is not assigned, account blacklisting is not possible.
-
-As token metadata indicates, there exists no freeze authority."""
-    elements.append(Paragraph(freeze_assessment, context_style))
+    elements.append(Paragraph("<b>Assessment:</b>", risk_body_style))
+    freeze_assessment = """The freeze authority is not assigned, account blacklisting is not possible. As token metadata indicates, there exists no freeze authority."""
+    elements.append(Paragraph(freeze_assessment, risk_body_style))
     elements.append(Spacer(1, 8))
     
     # Mitigations
-    elements.append(Paragraph("<b>Mitigations:</b>", context_style))
-    elements.append(Paragraph("N/A", context_style))
+    elements.append(Paragraph("<b>Mitigations:</b>", risk_body_style))
+    elements.append(Paragraph("N/A", risk_body_style))
     
     # Build PDF
     doc.build(elements)
