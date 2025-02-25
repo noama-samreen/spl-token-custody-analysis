@@ -115,6 +115,29 @@ def create_pdf(token_data, output_dir):
     styles, title_style, cell_style, context_style, header_style = create_styles()
     elements = []
     
+    # Title first
+    title = Paragraph(
+        f"Solana Token Security Assessment:<br/>{token_name} ({token_symbol})", 
+        title_style
+    )
+    elements.append(title)
+    elements.append(Spacer(1, 20))
+    
+    # Basic information table (reviewer, profile, date, etc.)
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    profile = "SPL Token 2022 Standard" if "Token 2022" in token_data['owner_program'] else "SPL Token Standard"
+    
+    metadata_data = [
+        [Paragraph("Reviewer", cell_style), Paragraph(token_data.get('reviewer_name', 'Noama Samreen'), cell_style)],
+        [Paragraph("Profile", cell_style), Paragraph(profile, cell_style)],
+        [Paragraph("Review Date", cell_style), Paragraph(current_date, cell_style)],
+        [Paragraph("Network", cell_style), Paragraph("Solana", cell_style)],
+        [Paragraph("Address", cell_style), Paragraph(token_data['address'], cell_style)]
+    ]
+    
+    elements.append(create_basic_table(metadata_data, cell_style))
+    elements.append(Spacer(1, 20))
+    
     # Add confidentiality notice
     confidentiality_style = ParagraphStyle(
         'Confidentiality',
@@ -128,14 +151,6 @@ def create_pdf(token_data, output_dir):
         "Confidential treatment requested under NY Banking Law § 36.10 and NY Pub. Off. Law § 87.2(d).",
         confidentiality_style
     ))
-    elements.append(Spacer(1, 20))
-    
-    # Title
-    title = Paragraph(
-        f"Solana Token Security Assessment:<br/>{token_name} ({token_symbol})", 
-        title_style
-    )
-    elements.append(title)
     elements.append(Spacer(1, 20))
     
     # Add conflicts certification
@@ -152,30 +167,28 @@ def create_pdf(token_data, output_dir):
     elements.append(Paragraph(conflicts_text, conflicts_style))
     elements.append(Spacer(1, 10))
     
-    # Add reviewer confirmation
-    reviewer_name = token_data.get('reviewer_name', 'Noama Samreen')
-    confirmation_status = token_data.get('confirmation_status', 'Confirmed')
+    # Add reviewer confirmation (single row table)
+    reviewer_confirmation = [[
+        Paragraph("Reviewer:", cell_style), 
+        Paragraph(token_data.get('reviewer_name', 'Noama Samreen'), cell_style),
+        Paragraph("Status:", cell_style),
+        Paragraph(token_data.get('confirmation_status', 'Confirmed'), cell_style)
+    ]]
     
-    reviewer_confirmation = [
-        [Paragraph("Reviewer:", cell_style), Paragraph(reviewer_name, cell_style)],
-        [Paragraph("Status:", cell_style), Paragraph(confirmation_status, cell_style)]
-    ]
-    elements.append(create_basic_table(reviewer_confirmation, cell_style))
-    elements.append(Spacer(1, 30))
-    
-    # Basic information table
-    current_date = datetime.now().strftime("%Y-%m-%d")
-    profile = "SPL Token 2022 Standard" if "Token 2022" in token_data['owner_program'] else "SPL Token Standard"
-    
-    data = [
-        [Paragraph("Reviewer", cell_style), Paragraph(reviewer_name, cell_style)],
-        [Paragraph("Profile", cell_style), Paragraph(profile, cell_style)],
-        [Paragraph("Review Date", cell_style), Paragraph(current_date, cell_style)],
-        [Paragraph("Network", cell_style), Paragraph("Solana", cell_style)],
-        [Paragraph("Address", cell_style), Paragraph(token_data['address'], cell_style)]
-    ]
-    
-    elements.append(create_basic_table(data, cell_style))
+    # Create table with 4 columns for single-row layout
+    reviewer_table = Table(reviewer_confirmation, colWidths=[1*inch, 2*inch, 1*inch, 2*inch])
+    reviewer_table.setStyle(TableStyle([
+        ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+        ('FONTNAME', (0,0), (-1,-1), 'Helvetica'),
+        ('FONTSIZE', (0,0), (-1,-1), 10),
+        ('GRID', (0,0), (-1,-1), 1, colors.black),
+        ('BACKGROUND', (0,0), (0,0), colors.lightgrey),
+        ('BACKGROUND', (2,0), (2,0), colors.lightgrey),
+        ('TEXTCOLOR', (0,0), (-1,-1), colors.black),
+        ('PADDING', (0,0), (-1,-1), 6),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+    ]))
+    elements.append(reviewer_table)
     elements.append(Spacer(1, 30))
     
     # Context text
