@@ -109,6 +109,21 @@ st.markdown("Analyze details of SPL tokens and Token-2022 assets on the Solana b
 tab1, tab2 = st.tabs(["Single Token", "Batch Process"])
 
 with tab1:
+    # Add reviewer input section
+    st.subheader("Reviewer Information")
+    reviewer_col1, reviewer_col2 = st.columns(2)
+    with reviewer_col1:
+        reviewer_name = st.text_input("Reviewer Name", value="Noama Samreen", key="reviewer_name")
+    with reviewer_col2:
+        confirmation_status = st.radio(
+            "Conflicts Certification Status",
+            options=["Confirmed", "Denied"],
+            horizontal=True,
+            key="confirmation_status"
+        )
+    
+    st.markdown("---")  # Add separator
+    
     col1, col2, col3 = st.columns([3, 1, 1])
     with col1:
         token_address = st.text_input("Enter token address", placeholder="Enter Solana token address...")
@@ -139,6 +154,9 @@ with tab1:
     # Display results if they exist
     if st.session_state.analysis_results:
         result_dict = st.session_state.analysis_results
+        # Add reviewer information to the result dictionary
+        result_dict['reviewer_name'] = reviewer_name
+        result_dict['confirmation_status'] = confirmation_status
         
         # Display key metrics in columns
         col1, col2 = st.columns(2)
