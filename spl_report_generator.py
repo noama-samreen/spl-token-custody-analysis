@@ -368,14 +368,16 @@ trusted Token Program"""
     # Freeze Authority Check
     elements.append(Paragraph("No freeze account", risk_subheader_style))
     
-    freeze_description = """A missing freeze authority means that it is set to null and therefore a permanently revoked privilege."""
+    freeze_description = """A missing freeze authority means that it is set to null and therefore a permanently revoked privilege. This means that account blacklisting is not possible."""
     elements.append(Paragraph(freeze_description, risk_body_style))
     elements.append(Spacer(1, 8))
     
     # Assessment
     elements.append(Paragraph("<b>Assessment:</b>", risk_body_style))
-    freeze_assessment = """As token metadata indicates, there exists no freeze authority. Therefore, account blacklisting is not possible."""
-    elements.append(Paragraph(freeze_assessment, risk_body_style))
+    elements.append(Paragraph(
+        f"""As token metadata indicates, there exists {token_data.get('freeze_authority', 'no freeze authority')}.""",
+        risk_body_style
+    ))
     elements.append(Spacer(1, 8))
     
     # Mitigations
@@ -384,14 +386,16 @@ trusted Token Program"""
     
     # Add Token 2022 specific checks if applicable
     if "Token 2022" in token_data.get('owner_program', ''):
-        # Permanent update authority Check
+        # Update Authority Check
         elements.append(Spacer(1, 15))
         elements.append(Paragraph("No Update Authority", risk_subheader_style))
         update_description = """A missing Update Authority means that the token configuration can't be altered."""
         elements.append(Paragraph(update_description, risk_body_style))
         elements.append(Paragraph("<b>Assessment:</b>", risk_body_style))
-        update_assessment = """As token metadata indicates, there exists no update authority. Therefore, token configuration change is not possible."""
-        elements.append(Paragraph(update_assessment, risk_body_style))
+        elements.append(Paragraph(
+            f"""As token metadata indicates, there exists {token_data.get('update_authority', 'no update authority')}.""",
+            risk_body_style
+        ))
         elements.append(Spacer(1, 8))
         elements.append(Paragraph("<b>Mitigations:</b>", risk_body_style))
         elements.append(Paragraph("N/A", risk_body_style))
@@ -399,11 +403,13 @@ trusted Token Program"""
         # Permanent Delegate Check
         elements.append(Spacer(1, 15))
         elements.append(Paragraph("No Permanent Delegate", risk_subheader_style))
-        delegate_description = """Permanent Delegate means that it is set to null and therefore a permanently revoked privilege."""
+        delegate_description = """Permanent Delegate means that it is set to null and therefore Therefore, no delegate can burn or transfer any amount of tokens."""
         elements.append(Paragraph(delegate_description, risk_body_style))
         elements.append(Paragraph("<b>Assessment:</b>", risk_body_style))
-        delegate_assessment = """As token metadata indicates, there exists no permanent delegate. Therefore, no delegate can burn or transfer any amount of tokens."""
-        elements.append(Paragraph(delegate_assessment, risk_body_style))
+        elements.append(Paragraph(
+            f"""As token metadata indicates, there exists {token_data.get('permanent_delegate', 'no permanent delegate')}.""",
+            risk_body_style
+        ))
         elements.append(Spacer(1, 8))
         elements.append(Paragraph("<b>Mitigations:</b>", risk_body_style))
         elements.append(Paragraph("N/A", risk_body_style))
@@ -411,11 +417,13 @@ trusted Token Program"""
         # Transaction Fees Check
         elements.append(Spacer(1, 15))
         elements.append(Paragraph("Transaction Fees", risk_subheader_style))
-        transaction_fees_description = """Transaction fees are set to 0 and therefore no transaction fees are possible."""
+        transaction_fees_description = """Transaction fees are set to 0 and therefore no transaction fees are possible and send/receive token amounts are the same as expected."""
         elements.append(Paragraph(transaction_fees_description, risk_body_style))
         elements.append(Paragraph("<b>Assessment:</b>", risk_body_style))
-        transaction_fees_assessment = """As token metadata indicates, there exists no transaction fees and send/receive token amounts are the same as expected."""
-        elements.append(Paragraph(transaction_fees_assessment, risk_body_style))
+        elements.append(Paragraph(
+            f"""As token metadata indicates, there exists {token_data.get('transaction_fees', 'no transaction fees')}.""",
+            risk_body_style
+        ))
         elements.append(Spacer(1, 8))
         elements.append(Paragraph("<b>Mitigations:</b>", risk_body_style))
         elements.append(Paragraph("N/A", risk_body_style))
@@ -426,8 +434,10 @@ trusted Token Program"""
         transfer_hook_description = """A missing TransferHook means that it is set to null and therefore does not communicate with a custom program whenever this token is transferred."""
         elements.append(Paragraph(transfer_hook_description, risk_body_style))
         elements.append(Paragraph("<b>Assessment:</b>", risk_body_style))
-        transfer_hook_assessment = """As token metadata indicates, there exists no transfer hook."""
-        elements.append(Paragraph(transfer_hook_assessment, risk_body_style))
+        elements.append(Paragraph(
+            f"""As token metadata indicates, there exists {token_data.get('transfer_hook', 'no transfer hook')}.""",
+            risk_body_style
+        ))
         elements.append(Spacer(1, 8))
         elements.append(Paragraph("<b>Mitigations:</b>", risk_body_style))
         elements.append(Paragraph("N/A", risk_body_style))
@@ -438,8 +448,10 @@ trusted Token Program"""
         confidential_transfers_description = """The confidential transfer is a non-anonymous, non-private transfer that publicly shares the source, destination, and token type, but uses zero-knowledge proofs to encrypt the amount of the transfer."""
         elements.append(Paragraph(confidential_transfers_description, risk_body_style))
         elements.append(Paragraph("<b>Assessment:</b>", risk_body_style))
-        confidential_transfers_assessment = """As token metadata indicates, there exists no confidential transfers."""
-        elements.append(Paragraph(confidential_transfers_assessment, risk_body_style))
+        elements.append(Paragraph(
+            f"""As token metadata indicates, there exists {token_data.get('confidential_transfers', 'no confidential transfers')}.""",
+            risk_body_style
+        ))
         elements.append(Spacer(1, 8))
         elements.append(Paragraph("<b>Mitigations:</b>", risk_body_style))
         elements.append(Paragraph("N/A", risk_body_style))
