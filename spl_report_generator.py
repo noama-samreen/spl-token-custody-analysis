@@ -212,6 +212,16 @@ trusted Token Program"""
     )))
     elements.append(Spacer(1, 25))
     
+    # Add risk scores
+    risk_scores = [
+        [Paragraph("Residual Security Risk Score:", cell_style), 
+         Paragraph(str(token_data.get('residual_risk_score', 'N/A')), cell_style)],
+        [Paragraph("Inherent Security Risk Score:", cell_style), 
+         Paragraph(str(token_data.get('inherent_risk_score', 'N/A')), cell_style)]
+    ]
+    elements.append(create_basic_table(risk_scores, cell_style))
+    elements.append(Spacer(1, 25))
+    
     # Additional details table with error handling
     additional_data = [["Field", "Value"]]
     
@@ -371,6 +381,22 @@ def create_doc(token_data, output_dir):
     recommendation = doc.add_paragraph()
     rec_text = f"{token_name} ({token_symbol}) {'is' if security_review == 'PASSED' else 'is not'} recommended for listing."
     recommendation.add_run(rec_text).bold = True
+    
+    doc.add_paragraph()
+    
+    # Add risk scores
+    risk_table = doc.add_table(rows=2, cols=2)
+    risk_table.style = 'Table Grid'
+    
+    # Residual Risk Score
+    residual_cells = risk_table.rows[0].cells
+    residual_cells[0].text = "Residual Security Risk Score:"
+    residual_cells[1].text = str(token_data.get('residual_risk_score', 'N/A'))
+    
+    # Inherent Risk Score
+    inherent_cells = risk_table.rows[1].cells
+    inherent_cells[0].text = "Inherent Security Risk Score:"
+    inherent_cells[1].text = str(token_data.get('inherent_risk_score', 'N/A'))
     
     doc.add_paragraph()
     
