@@ -5,7 +5,8 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Frame, PageTemplate
+from reportlab.pdfgen import canvas
 
 def create_styles():
     styles = getSampleStyleSheet()
@@ -124,6 +125,16 @@ def create_additional_table(data, cell_style):
     ]))
     return table
 
+def create_header(canvas, doc):
+    canvas.saveState()
+    # Set up the style for confidentiality notice
+    canvas.setFont('Helvetica-Oblique', 8)
+    canvas.setFillColor(colors.grey)
+    # Position the text at the top of the page (72 is the default margin)
+    canvas.drawString(72, letter[1] - 50, 
+        "Confidential treatment requested under NY Banking Law § 36.10 and NY Pub. Off. Law § 87.2(d).")
+    canvas.restoreState()
+
 def create_pdf(token_data, output_dir):
     """Generate PDF for a single token"""
     # Handle missing or invalid name/symbol
@@ -147,6 +158,21 @@ def create_pdf(token_data, output_dir):
         topMargin=72,
         bottomMargin=72
     )
+    
+    # Add page template with header
+    frame = Frame(
+        doc.leftMargin, 
+        doc.bottomMargin, 
+        doc.width, 
+        doc.height,
+        id='normal'
+    )
+    template = PageTemplate(
+        id='main',
+        frames=frame,
+        onPage=create_header
+    )
+    doc.addPageTemplates([template])
     
     styles, title_style, cell_style, context_style, header_style, risk_header_style, risk_subheader_style, risk_body_style = create_styles()
     elements = []
@@ -172,21 +198,6 @@ def create_pdf(token_data, output_dir):
     ]
     
     elements.append(create_basic_table(metadata_data, cell_style))
-    elements.append(Spacer(1, 20))
-    
-    # Add confidentiality notice
-    confidentiality_style = ParagraphStyle(
-        'Confidentiality',
-        parent=styles['Normal'],
-        fontSize=8,
-        textColor=colors.grey,
-        alignment=0,
-        fontName='Helvetica-Oblique'
-    )
-    elements.append(Paragraph(
-        "Confidential treatment requested under NY Banking Law § 36.10 and NY Pub. Off. Law § 87.2(d).",
-        confidentiality_style
-    ))
     elements.append(Spacer(1, 20))
     
     # Add conflicts certification
