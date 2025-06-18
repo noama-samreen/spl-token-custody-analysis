@@ -9,185 +9,118 @@ import os
 import zipfile
 from datetime import datetime
 
-# Helper functions
-def update_mitigation_doc(check):
-    """Update mitigation documentation in session state"""
-    st.session_state.mitigations[check]['documentation'] = st.session_state[f"mitigation_doc_{check}"]
-
-def update_mitigation_links(check):
-    """Update mitigation links in session state"""
-    st.session_state.mitigations[check]['links'] = st.session_state[f"mitigation_links_{check}"]
-
 # Initialize session state
 if 'analysis_results' not in st.session_state:
     st.session_state.analysis_results = None
 if 'batch_results' not in st.session_state:
-    st.session_state.batch_results = []
-if 'mitigation_applied' not in st.session_state:
-    st.session_state.mitigation_applied = False
-if 'mitigations' not in st.session_state:
-    st.session_state.mitigations = {}
+    st.session_state.batch_results = None
+if 'mitigation_text' not in st.session_state:
+    st.session_state.mitigation_text = ""
+if 'mitigation_approved' not in st.session_state:
+    st.session_state.mitigation_approved = False
 
-# Page config
+# Set page config
 st.set_page_config(
-    page_title="Solana Token Security Analyzer",
+    page_title="SPL Token Custody Risk Analyzer",
     page_icon="🔍",
     layout="wide"
 )
 
-# Custom CSS
+# Add custom CSS
 st.markdown("""
 <style>
-.main {
-    padding: 2rem;
-}
-.stButton>button {
-    width: 100%;
-    background-color: #7047EB;
-    color: white;
-    border-radius: 8px;
-    padding: 0.5rem 1rem;
-    margin: 1rem 0;
-}
-.stButton>button:hover {
-    background-color: #5835c4;
-}
-.json-output {
-    background-color: #f8f9fa;
-    padding: 1rem;
-    border-radius: 8px;
-    font-family: monospace;
-    white-space: pre-wrap;
-    font-size: 0.85rem;
-}
-.output-container {
-    margin: 2rem 0;
-    padding: 1rem;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-}
-.header-container {
-    text-align: center;
-    padding: 2rem 0;
-}
-.stProgress > div > div > div {
-    background-color: #7047EB;
-}
-.metric-container {
-    background-color: #f8f9fa;
-    padding: 1rem;
-    border-radius: 8px;
-    margin: 0.5rem 0;
-}
-
-/* New styles for metrics */
-[data-testid="stMetricValue"] {
-    font-size: 1.8rem !important;
-    font-weight: 600;
-}
-[data-testid="stMetricLabel"] {
-    font-size: 1rem !important;
-    font-weight: 500;
-    color: #555;
-}
-[data-testid="stMetricDelta"] {
-    font-size: 0.9rem !important;
-}
-
-/* Style for long addresses */
-[data-testid="stMetricValue"] div {
-    font-family: 'Courier New', monospace;
-    font-size: 0.85rem !important;
-    word-break: break-all;
-    line-height: 1.2;
-}
-
-/* Adjust overall container padding */
-.element-container {
-    padding: 0.5rem 0;
-}
-
-/* Style JSON display */
-.stJson {
-    font-size: 0.85rem !important;
-    line-height: 1.4;
-}
-
-.risk-box {
-    padding: 12px 16px;
-    border-radius: 4px;
-    margin: 8px 0;
-    display: inline-block;
-}
-.risk-high {
-    background-color: rgba(255, 0, 0, 0.1);
-    border: 1px solid red;
-}
-.risk-low {
-    background-color: rgba(0, 255, 0, 0.1);
-    border: 1px solid green;
-}
-.outcome-header {
-    margin: 0;
-    font-size: 1rem;
-    font-weight: 600;
-}
-.mitigation-container {
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 10px;
-    margin: 10px 0;
-}
+    .risk-box {
+        padding: 10px;
+        border-radius: 5px;
+        margin: 10px 0;
+        display: inline-block;
+    }
+    .risk-high { background-color: #ffebee; }
+    .risk-low { background-color: #e8f5e9; }
+    .outcome-header {
+        margin: 0;
+        font-size: 1em;
+    }
+    .mitigation-container {
+        margin: 10px 0;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+    }
+    .error-box {
+        padding: 1rem;
+        background-color: #fff3f3;
+        border: 1px solid #ffcdd2;
+        border-radius: 4px;
+        margin: 1rem 0;
+    }
+    .error-title {
+        color: #d32f2f;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# Header
-st.title("🔍 Solana Token Security Analyzer")
-st.markdown("Analyze details of SPL tokens and Token-2022 assets on the Solana blockchain, including tokens from pump.fun.")
+# Title and description
+st.title("🔍 SPL Token Custody Risk Analyzer")
+st.markdown("""
+Analyze details of SPL tokens and Token-2022 assets on the Solana blockchain, including tokens from pump.fun.
+""")
 
 # Create tabs
 tab1, tab2 = st.tabs(["Single Token", "Batch Process"])
 
 with tab1:
-    # Token address input first
-    col1, col2, col3 = st.columns([3, 1, 1])
-    with col1:
-        token_address = st.text_input("Enter token address", placeholder="Enter Solana token address...")
-
-    # Reviewer information below address
+    # Reviewer information first
     reviewer_col1, reviewer_col2 = st.columns(2)
     with reviewer_col1:
-        reviewer_name = st.text_input("Reviewer Name", value="Noama Samreen", key="reviewer_name")
+        reviewer_name = st.text_input("Reviewer Name", value="Noama Samreen")
     with reviewer_col2:
         confirmation_status = st.radio(
             "Conflicts Certification Status",
             options=["Confirmed", "Denied"],
-            horizontal=True,
-            key="confirmation_status"
+            horizontal=True
         )
-    
-    # Analyze button at the bottom
-    analyze_button = st.button("Analyze Token", key="single_analyze", use_container_width=True)
-    
-    if analyze_button and token_address:
-        with st.spinner("Analyzing token..."):
-            async def get_token():
-                async with aiohttp.ClientSession() as session:
-                    details, error = await get_token_details_async(token_address, session)
-                    if error:
-                        return {'status': 'error', 'error': error}
-                    return {'status': 'success', 'data': details.to_dict()}
+
+    # Token address input
+    token_address = st.text_input("Enter token address", placeholder="Enter Solana token address...")
+
+    if token_address:
+        async def get_token():
+            async with aiohttp.ClientSession() as session:
+                details, error = await get_token_details_async(token_address, session)
+                if error:
+                    return {'status': 'error', 'error': error}
+                if details.owner_program == "System Program" or "Not a token program" in details.owner_program:
+                    return {
+                        'status': 'error',
+                        'error': 'The provided address is not a valid SPL token. Please check the address and try again.'
+                    }
+                return {'status': 'success', 'data': details.to_dict()}
             
-            try:
-                result = asyncio.run(get_token())
-                if result['status'] == 'success':
-                    st.session_state.analysis_results = result['data']
-                    st.session_state.mitigation_applied = False
-                else:
-                    st.error(f"Error: {result['error']}")
-            except Exception as e:
-                st.error(f"Error analyzing token: {str(e)}")
-    
+        if st.button("Analyze Token", use_container_width=True):
+            with st.spinner("Analyzing token..."):
+                try:
+                    result = asyncio.run(get_token())
+                    if result['status'] == 'success':
+                        st.session_state.analysis_results = result['data']
+                        st.session_state.mitigation_approved = False
+                    else:
+                        st.markdown(f"""
+                        <div class="error-box">
+                            <div class="error-title">❌ Analysis Failed</div>
+                            <p>{result['error']}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                except Exception as e:
+                    st.markdown(f"""
+                    <div class="error-box">
+                        <div class="error-title">❌ Unexpected Error</div>
+                        <p>An error occurred while analyzing the token: {str(e)}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+
     # Display results if they exist
     if st.session_state.analysis_results:
         result_dict = st.session_state.analysis_results
@@ -209,78 +142,39 @@ with tab1:
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Display the risk factors with individual mitigations
-                st.subheader("Risk Factors & Mitigations")
-                
-                failed_checks = []
+                # Display risk factors
+                st.subheader("Risk Factors")
                 if result_dict.get('freeze_authority'):
-                    failed_checks.append(('freeze_authority', '❌ Freeze Authority is present'))
+                    st.markdown("❌ **Freeze Authority is present**")
                 if result_dict.get('permanent_delegate'):
-                    failed_checks.append(('permanent_delegate', '❌ Permanent Delegate is present'))
+                    st.markdown("❌ **Permanent Delegate is present**")
                 if result_dict.get('transfer_hook'):
-                    failed_checks.append(('transfer_hook', '❌ Transfer Hook is present'))
+                    st.markdown("❌ **Transfer Hook is present**")
                 if result_dict.get('confidential_transfers'):
-                    failed_checks.append(('confidential_transfers', '❌ Confidential Transfers Authority is present'))
+                    st.markdown("❌ **Confidential Transfers Authority is present**")
                 if result_dict.get('transaction_fees') not in [None, 'None', '0', 0]:
-                    failed_checks.append(('transfer_fees', '❌ Non-zero Transfer Fees'))
+                    st.markdown("❌ **Non-zero Transfer Fees**")
 
-                # Initialize mitigations in session state if not present
-                if not st.session_state.mitigations:
-                    st.session_state.mitigations = {
-                        check: {'documentation': '', 'links': ''} 
-                        for check, _ in failed_checks
-                    }
+                # Global mitigation section
+                st.subheader("Risk Mitigation")
+                mitigation_text = st.text_area(
+                    "Mitigation Documentation",
+                    value=st.session_state.mitigation_text,
+                    help="Document why these risks are acceptable and how they are mitigated",
+                    key="mitigation_text"
+                )
 
-                for check, description in failed_checks:
-                    with st.container():
-                        st.markdown(f"""
-                        <div class="mitigation-container">
-                            <p><strong>{description}</strong></p>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-                        # Documentation for this check
-                        st.text_area(
-                            "Mitigation Documentation",
-                            key=f"mitigation_doc_{check}",
-                            value=st.session_state.mitigations[check]['documentation'],
-                            help="Document why this risk is acceptable and how it is mitigated",
-                            on_change=lambda check=check: update_mitigation_doc(check)
-                        )
-                        
-                        # Links for this check
-                        st.text_input(
-                            "Supporting Links (comma-separated)",
-                            key=f"mitigation_links_{check}",
-                            value=st.session_state.mitigations[check]['links'],
-                            help="Add links to supporting documentation, separated by commas",
-                            on_change=lambda check=check: update_mitigation_links(check)
-                        )
-
-                if st.button("Apply All Mitigations"):
-                    # Validate that all failed checks have documentation
-                    missing_docs = [check for check, _ in failed_checks 
-                                  if not st.session_state.mitigations[check]['documentation'].strip()]
-                    
-                    if missing_docs:
-                        st.error("Please provide mitigation documentation for all failed checks")
+                if st.button("Apply Mitigation"):
+                    if not mitigation_text.strip():
+                        st.error("Please provide mitigation documentation")
                     else:
-                        # Update the results with mitigations
-                        mitigations = {}
-                        for check, _ in failed_checks:
-                            doc = st.session_state.mitigations[check]['documentation']
-                            links = [link.strip() for link in st.session_state.mitigations[check]['links'].split(',') if link.strip()]
-                            mitigations[check] = {
-                                'documentation': doc,
-                                'applied': True,
-                                'links': links
-                            }
-                        
-                        result_dict['mitigations'] = mitigations
+                        st.session_state.mitigation_text = mitigation_text
+                        result_dict['mitigation_text'] = mitigation_text
+                        result_dict['mitigation_approved'] = True
                         result_dict['security_review'] = "PASSED"
                         st.session_state.analysis_results = result_dict
-                        st.session_state.mitigation_applied = True
-                        st.success("✅ Mitigations applied - Security Review updated to PASSED")
+                        st.session_state.mitigation_approved = True
+                        st.success("✅ Mitigation applied - Security Review updated to PASSED")
                         st.rerun()
             
             elif security_review == "PASSED":
@@ -290,21 +184,13 @@ with tab1:
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Show mitigations if they exist
-                if result_dict.get('mitigations'):
-                    with st.expander("View Applied Mitigations"):
-                        for check, mitigation in result_dict['mitigations'].items():
-                            if mitigation['applied']:
-                                st.markdown(f"**{check.replace('_', ' ').title()}**")
-                                st.write(mitigation['documentation'])
-                                if mitigation.get('links'):
-                                    st.markdown("**Supporting Links:**")
-                                    for link in mitigation['links']:
-                                        st.markdown(f"- [{link}]({link})")
-                                st.markdown("---")
-
-            with col2:
-                st.metric("Token Program", "Token-2022" if "Token 2022" in result_dict.get('owner_program', '') else "SPL Token")
+                # Show mitigation if it exists
+                if result_dict.get('mitigation_text') and result_dict.get('mitigation_approved'):
+                    with st.expander("View Applied Mitigation"):
+                        st.write(result_dict['mitigation_text'])
+        
+        with col2:
+            st.metric("Token Program", "Token-2022" if "Token 2022" in result_dict.get('owner_program', '') else "SPL Token")
         
         # Display authorities in columns
         col1, col2 = st.columns(2)
@@ -320,17 +206,17 @@ with tab1:
                 st.metric("Genuine Pump Fun Token", "Yes" if result_dict.get('is_genuine_pump_fun_token', False) else "No")
             with col2:
                 st.metric("Graduated to Raydium", "Yes" if result_dict.get('token_graduated_to_raydium', False) else "No")
+            
+            if result_dict.get('interacted_with'):
+                st.metric("Interaction Type", result_dict.get('interacted_with', 'None'))
                 
-                if result_dict.get('interacted_with'):
-                    st.metric("Interaction Type", result_dict.get('interacted_with', 'None'))
-                    
-                    if result_dict.get('interacting_account'):
-                        with st.expander("Interaction Details"):
-                            st.text("Interacting Account")
-                            st.code(result_dict.get('interacting_account'))
-                            if result_dict.get('interaction_signature'):
-                                st.text("Transaction Signature")
-                                st.code(result_dict.get('interaction_signature'))
+                if result_dict.get('interacting_account'):
+                    with st.expander("Interaction Details"):
+                        st.text("Interacting Account")
+                        st.code(result_dict.get('interacting_account'))
+                        if result_dict.get('interaction_signature'):
+                            st.text("Transaction Signature")
+                            st.code(result_dict.get('interaction_signature'))
         
         # If token is Token-2022, display extension features
         if "Token 2022" in result_dict.get('owner_program', ''):
