@@ -1,6 +1,6 @@
 # Copyright 2025 noamasamreen
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, Optional, Tuple, Any, List
 import base64
 from functools import lru_cache
@@ -154,6 +154,12 @@ class Token2022Extensions:
     confidential_transfers_authority: Optional[str] = None
 
 @dataclass
+class MitigationDetails:
+    documentation: str
+    applied: bool = False
+    links: List[str] = field(default_factory=list)
+
+@dataclass
 class TokenDetails:
     name: str
     symbol: str
@@ -168,8 +174,7 @@ class TokenDetails:
     interaction_signature: Optional[str] = None
     security_review: str = "FAILED"
     token_graduated_to_raydium: bool = False
-    mitigation_documentation: Optional[str] = None
-    mitigation_applied: bool = False
+    mitigations: Dict[str, MitigationDetails] = field(default_factory=dict)
 
     def to_dict(self) -> Dict:
         result = {
@@ -180,9 +185,7 @@ class TokenDetails:
             'freeze_authority': self.freeze_authority,
             'update_authority': (f"{self.update_authority} (Pump.Fun Mint Authority)" 
                                if self.update_authority == "TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM" 
-                               else self.update_authority),
-            'mitigation_documentation': self.mitigation_documentation,
-            'mitigation_applied': self.mitigation_applied
+                               else self.update_authority)
         }
         
         if self.extensions:
@@ -201,12 +204,35 @@ class TokenDetails:
                 result['interacting_account'] = self.interacting_account
                 result['interaction_signature'] = self.interaction_signature
         
-        # Update security review based on mitigation
-        if self.mitigation_applied:
-            result['security_review'] = "PASSED"
-        else:
-            result['security_review'] = self.security_review
-            
+        # Add mitigations to result
+        result['mitigations'] = {
+            check: {
+                'documentation': mitigation.documentation,
+                'applied': mitigation.applied,
+                'links': mitigation.links
+            }
+            for check, mitigation in self.mitigations.items()
+        }
+        
+        # Update security review based on mitigations
+        has_unmitigated_risks = False
+        if self.freeze_authority and not (self.mitigations.get('freeze_authority', MitigationDetails('')).applied):
+            has_unmitigated_risks = True
+        if self.extensions:
+            if (self.extensions.permanent_delegate and 
+                not self.mitigations.get('permanent_delegate', MitigationDetails('')).applied):
+                has_unmitigated_risks = True
+            if (self.extensions.transfer_hook_authority and 
+                not self.mitigations.get('transfer_hook', MitigationDetails('')).applied):
+                has_unmitigated_risks = True
+            if (self.extensions.confidential_transfers_authority and 
+                not self.mitigations.get('confidential_transfers', MitigationDetails('')).applied):
+                has_unmitigated_risks = True
+            if (self.extensions.transfer_fee not in [None, 0] and 
+                not self.mitigations.get('transfer_fees', MitigationDetails('')).applied):
+                has_unmitigated_risks = True
+        
+        result['security_review'] = 'FAILED' if has_unmitigated_risks else 'PASSED'
         return result
 
 @lru_cache(maxsize=100)
