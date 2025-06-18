@@ -7,12 +7,15 @@ from spl_report_generator import create_pdf
 import tempfile
 import os
 import zipfile
+from datetime import datetime
 
 # Initialize session state if not already done
 if 'analysis_results' not in st.session_state:
     st.session_state.analysis_results = None
 if 'batch_results' not in st.session_state:
     st.session_state.batch_results = None
+if 'mitigation_applied' not in st.session_state:
+    st.session_state.mitigation_applied = False
 
 # Page config
 st.set_page_config(
@@ -98,6 +101,20 @@ st.markdown("""
     font-size: 0.85rem !important;
     line-height: 1.4;
 }
+
+.risk-box {
+    padding: 20px;
+    border-radius: 5px;
+    margin: 10px 0;
+}
+.risk-high {
+    background-color: rgba(255, 0, 0, 0.1);
+    border: 1px solid red;
+}
+.risk-low {
+    background-color: rgba(0, 255, 0, 0.1);
+    border: 1px solid green;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -142,6 +159,7 @@ with tab1:
                     st.error(result)
                 else:
                     st.session_state.analysis_results = result.to_dict()
+                    st.session_state.mitigation_applied = False
             except Exception as e:
                 st.error(f"Error analyzing token: {str(e)}")
     
@@ -155,7 +173,63 @@ with tab1:
         # Display key metrics in columns
         col1, col2 = st.columns(2)
         with col1:
-            st.metric("Security Review", result_dict.get('security_review', 'N/A'))
+            security_review = result_dict.get('security_review', 'N/A')
+            st.metric("Security Review", security_review)
+            
+            # Show mitigation section if security review failed
+            if security_review == "FAILED":
+                st.markdown("""
+                <div class="risk-box risk-high">
+                    <h3>⚠️ Security Review Failed</h3>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Display the risk factors
+                st.subheader("Risk Factors:")
+                if result_dict.get('freeze_authority'):
+                    st.warning("❌ Freeze Authority is present")
+                if result_dict.get('permanent_delegate'):
+                    st.warning("❌ Permanent Delegate is present")
+                if result_dict.get('transfer_hook'):
+                    st.warning("❌ Transfer Hook is present")
+                if result_dict.get('confidential_transfers'):
+                    st.warning("❌ Confidential Transfers Authority is present")
+                if result_dict.get('transaction_fees') not in [None, 'None', '0', 0]:
+                    st.warning("❌ Non-zero Transfer Fees")
+                
+                # Mitigation section
+                st.subheader("Risk Mitigation")
+                mitigation_documentation = st.text_area(
+                    "Provide mitigation documentation",
+                    help="Document why these risks are acceptable and how they are mitigated",
+                    key="mitigation_documentation"
+                )
+                
+                if st.button("Apply Mitigation"):
+                    if mitigation_documentation.strip():
+                        # Update the results with mitigation
+                        result_dict['mitigation_documentation'] = mitigation_documentation
+                        result_dict['mitigation_applied'] = True
+                        result_dict['security_review'] = "PASSED"
+                        st.session_state.analysis_results = result_dict
+                        st.session_state.mitigation_applied = True
+                        st.success("✅ Mitigation applied - Security Review updated to PASSED")
+                        st.rerun()
+                    else:
+                        st.error("Please provide mitigation documentation before applying")
+            
+            elif security_review == "PASSED":
+                st.markdown("""
+                <div class="risk-box risk-low">
+                    <h3>✅ Security Review Passed</h3>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Show mitigation documentation if it exists
+                if result_dict.get('mitigation_documentation'):
+                    with st.expander("View Applied Mitigation"):
+                        st.write(result_dict['mitigation_documentation'])
+        
         with col2:
             st.metric("Token Program", "Token-2022" if "Token 2022" in result_dict.get('owner_program', '') else "SPL Token")
         
