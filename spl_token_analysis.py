@@ -1,6 +1,6 @@
 # Copyright 2025 noamasamreen
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Dict, Optional, Tuple, Any, List
 import base64
 from functools import lru_cache
@@ -154,12 +154,6 @@ class Token2022Extensions:
     confidential_transfers_authority: Optional[str] = None
 
 @dataclass
-class MitigationDetails:
-    documentation: str
-    applied: bool = False
-    links: List[str] = field(default_factory=list)
-
-@dataclass
 class TokenDetails:
     name: str
     symbol: str
@@ -174,7 +168,6 @@ class TokenDetails:
     interaction_signature: Optional[str] = None
     security_review: str = "FAILED"
     token_graduated_to_raydium: bool = False
-    mitigations: Dict[str, MitigationDetails] = field(default_factory=dict)
 
     def to_dict(self) -> Dict:
         result = {
@@ -204,35 +197,7 @@ class TokenDetails:
                 result['interacting_account'] = self.interacting_account
                 result['interaction_signature'] = self.interaction_signature
         
-        # Add mitigations to result
-        result['mitigations'] = {
-            check: {
-                'documentation': mitigation.documentation,
-                'applied': mitigation.applied,
-                'links': mitigation.links
-            }
-            for check, mitigation in self.mitigations.items()
-        }
-        
-        # Update security review based on mitigations
-        has_unmitigated_risks = False
-        if self.freeze_authority and not (self.mitigations.get('freeze_authority', MitigationDetails('')).applied):
-            has_unmitigated_risks = True
-        if self.extensions:
-            if (self.extensions.permanent_delegate and 
-                not self.mitigations.get('permanent_delegate', MitigationDetails('')).applied):
-                has_unmitigated_risks = True
-            if (self.extensions.transfer_hook_authority and 
-                not self.mitigations.get('transfer_hook', MitigationDetails('')).applied):
-                has_unmitigated_risks = True
-            if (self.extensions.confidential_transfers_authority and 
-                not self.mitigations.get('confidential_transfers', MitigationDetails('')).applied):
-                has_unmitigated_risks = True
-            if (self.extensions.transfer_fee not in [None, 0] and 
-                not self.mitigations.get('transfer_fees', MitigationDetails('')).applied):
-                has_unmitigated_risks = True
-        
-        result['security_review'] = 'FAILED' if has_unmitigated_risks else 'PASSED'
+        result['security_review'] = self.security_review
         return result
 
 @lru_cache(maxsize=100)
