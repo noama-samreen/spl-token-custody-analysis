@@ -2,7 +2,7 @@ import streamlit as st
 import asyncio
 import aiohttp
 import json
-from spl_token_analysis import analyze_token_address, process_tokens_concurrently
+from spl_token_analysis import get_token_details_async, process_tokens_concurrently
 from spl_report_generator import create_pdf
 import tempfile
 import os
@@ -173,12 +173,15 @@ with tab1:
         with st.spinner("Analyzing token..."):
             async def get_token():
                 async with aiohttp.ClientSession() as session:
-                    return await analyze_token_address(token_address, session)
+                    details, error = await get_token_details_async(token_address, session)
+                    if error:
+                        return {'status': 'error', 'error': error}
+                    return {'status': 'success', 'data': details.to_dict()}
             
             try:
                 result = asyncio.run(get_token())
                 if result['status'] == 'success':
-                    st.session_state.analysis_results = result
+                    st.session_state.analysis_results = result['data']
                     st.session_state.mitigation_applied = False
                 else:
                     st.error(f"Error: {result['error']}")
