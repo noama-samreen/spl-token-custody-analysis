@@ -168,6 +168,8 @@ class TokenDetails:
     interaction_signature: Optional[str] = None
     security_review: str = "FAILED"
     token_graduated_to_raydium: bool = False
+    mitigation_documentation: Optional[str] = None
+    mitigation_applied: bool = False
 
     def to_dict(self) -> Dict:
         result = {
@@ -178,7 +180,9 @@ class TokenDetails:
             'freeze_authority': self.freeze_authority,
             'update_authority': (f"{self.update_authority} (Pump.Fun Mint Authority)" 
                                if self.update_authority == "TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM" 
-                               else self.update_authority)
+                               else self.update_authority),
+            'mitigation_documentation': self.mitigation_documentation,
+            'mitigation_applied': self.mitigation_applied
         }
         
         if self.extensions:
@@ -197,7 +201,12 @@ class TokenDetails:
                 result['interacting_account'] = self.interacting_account
                 result['interaction_signature'] = self.interaction_signature
         
-        result['security_review'] = self.security_review
+        # Update security review based on mitigation
+        if self.mitigation_applied:
+            result['security_review'] = "PASSED"
+        else:
+            result['security_review'] = self.security_review
+            
         return result
 
 @lru_cache(maxsize=100)
