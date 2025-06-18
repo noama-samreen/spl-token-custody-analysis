@@ -9,6 +9,15 @@ import os
 import zipfile
 from datetime import datetime
 
+# Helper functions
+def update_mitigation_doc(check):
+    """Update mitigation documentation in session state"""
+    st.session_state.mitigations[check]['documentation'] = st.session_state[f"mitigation_doc_{check}"]
+
+def update_mitigation_links(check):
+    """Update mitigation links in session state"""
+    st.session_state.mitigations[check]['links'] = st.session_state[f"mitigation_links_{check}"]
+
 # Initialize session state
 if 'analysis_results' not in st.session_state:
     st.session_state.analysis_results = None
@@ -291,14 +300,6 @@ with tab1:
                                     for link in mitigation['links']:
                                         st.markdown(f"- [{link}]({link})")
                                 st.markdown("---")
-
-def update_mitigation_doc(check):
-    """Update mitigation documentation in session state"""
-    st.session_state.mitigations[check]['documentation'] = st.session_state[f"mitigation_doc_{check}"]
-
-def update_mitigation_links(check):
-    """Update mitigation links in session state"""
-    st.session_state.mitigations[check]['links'] = st.session_state[f"mitigation_links_{check}"]
 
 with col2:
     st.metric("Token Program", "Token-2022" if "Token 2022" in result_dict.get('owner_program', '') else "SPL Token")
