@@ -9,13 +9,15 @@ import os
 import zipfile
 from datetime import datetime
 
-# Initialize session state if not already done
+# Initialize session state
 if 'analysis_results' not in st.session_state:
     st.session_state.analysis_results = None
 if 'batch_results' not in st.session_state:
-    st.session_state.batch_results = None
+    st.session_state.batch_results = []
 if 'mitigation_applied' not in st.session_state:
     st.session_state.mitigation_applied = False
+if 'mitigations' not in st.session_state:
+    st.session_state.mitigations = {}
 
 # Page config
 st.set_page_config(
@@ -103,9 +105,10 @@ st.markdown("""
 }
 
 .risk-box {
-    padding: 20px;
-    border-radius: 5px;
-    margin: 10px 0;
+    padding: 12px 16px;
+    border-radius: 4px;
+    margin: 8px 0;
+    display: inline-block;
 }
 .risk-high {
     background-color: rgba(255, 0, 0, 0.1);
@@ -114,6 +117,17 @@ st.markdown("""
 .risk-low {
     background-color: rgba(0, 255, 0, 0.1);
     border: 1px solid green;
+}
+.outcome-header {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+.mitigation-container {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px;
+    margin: 10px 0;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -180,120 +194,176 @@ with tab1:
             if security_review == "FAILED":
                 st.markdown("""
                 <div class="risk-box risk-high">
-                    <h3>⚠️ Security Review Failed</h3>
+                    <h3 class="outcome-header">⚠️ Security Review Failed</h3>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Display the risk factors
-                st.subheader("Risk Factors:")
+                # Display the risk factors with individual mitigations
+                st.subheader("Risk Factors & Mitigations")
+                
+                failed_checks = []
                 if result_dict.get('freeze_authority'):
-                    st.warning("❌ Freeze Authority is present")
+                    failed_checks.append(('freeze_authority', '❌ Freeze Authority is present'))
                 if result_dict.get('permanent_delegate'):
-                    st.warning("❌ Permanent Delegate is present")
+                    failed_checks.append(('permanent_delegate', '❌ Permanent Delegate is present'))
                 if result_dict.get('transfer_hook'):
-                    st.warning("❌ Transfer Hook is present")
+                    failed_checks.append(('transfer_hook', '❌ Transfer Hook is present'))
                 if result_dict.get('confidential_transfers'):
-                    st.warning("❌ Confidential Transfers Authority is present")
+                    failed_checks.append(('confidential_transfers', '❌ Confidential Transfers Authority is present'))
                 if result_dict.get('transaction_fees') not in [None, 'None', '0', 0]:
-                    st.warning("❌ Non-zero Transfer Fees")
-                
-                # Mitigation section
-                st.subheader("Risk Mitigation")
-                mitigation_documentation = st.text_area(
-                    "Provide mitigation documentation",
-                    help="Document why these risks are acceptable and how they are mitigated",
-                    key="mitigation_documentation"
-                )
-                
-                if st.button("Apply Mitigation"):
-                    if mitigation_documentation.strip():
-                        # Update the results with mitigation
-                        result_dict['mitigation_documentation'] = mitigation_documentation
-                        result_dict['mitigation_applied'] = True
+                    failed_checks.append(('transfer_fees', '❌ Non-zero Transfer Fees'))
+
+                # Initialize mitigations in session state if not present
+                if not st.session_state.mitigations:
+                    st.session_state.mitigations = {
+                        check: {'documentation': '', 'links': ''} 
+                        for check, _ in failed_checks
+                    }
+
+                for check, description in failed_checks:
+                    with st.container():
+                        st.markdown(f"""
+                        <div class="mitigation-container">
+                            <p><strong>{description}</strong></p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # Documentation for this check
+                        st.text_area(
+                            "Mitigation Documentation",
+                            key=f"mitigation_doc_{check}",
+                            value=st.session_state.mitigations[check]['documentation'],
+                            help="Document why this risk is acceptable and how it is mitigated",
+                            on_change=lambda check=check: update_mitigation_doc(check)
+                        )
+                        
+                        # Links for this check
+                        st.text_input(
+                            "Supporting Links (comma-separated)",
+                            key=f"mitigation_links_{check}",
+                            value=st.session_state.mitigations[check]['links'],
+                            help="Add links to supporting documentation, separated by commas",
+                            on_change=lambda check=check: update_mitigation_links(check)
+                        )
+
+                if st.button("Apply All Mitigations"):
+                    # Validate that all failed checks have documentation
+                    missing_docs = [check for check, _ in failed_checks 
+                                  if not st.session_state.mitigations[check]['documentation'].strip()]
+                    
+                    if missing_docs:
+                        st.error("Please provide mitigation documentation for all failed checks")
+                    else:
+                        # Update the results with mitigations
+                        mitigations = {}
+                        for check, _ in failed_checks:
+                            doc = st.session_state.mitigations[check]['documentation']
+                            links = [link.strip() for link in st.session_state.mitigations[check]['links'].split(',') if link.strip()]
+                            mitigations[check] = {
+                                'documentation': doc,
+                                'applied': True,
+                                'links': links
+                            }
+                        
+                        result_dict['mitigations'] = mitigations
                         result_dict['security_review'] = "PASSED"
                         st.session_state.analysis_results = result_dict
                         st.session_state.mitigation_applied = True
-                        st.success("✅ Mitigation applied - Security Review updated to PASSED")
+                        st.success("✅ Mitigations applied - Security Review updated to PASSED")
                         st.rerun()
-                    else:
-                        st.error("Please provide mitigation documentation before applying")
             
             elif security_review == "PASSED":
                 st.markdown("""
                 <div class="risk-box risk-low">
-                    <h3>✅ Security Review Passed</h3>
+                    <h3 class="outcome-header">✅ Security Review Passed</h3>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Show mitigation documentation if it exists
-                if result_dict.get('mitigation_documentation'):
-                    with st.expander("View Applied Mitigation"):
-                        st.write(result_dict['mitigation_documentation'])
+                # Show mitigations if they exist
+                if result_dict.get('mitigations'):
+                    with st.expander("View Applied Mitigations"):
+                        for check, mitigation in result_dict['mitigations'].items():
+                            if mitigation['applied']:
+                                st.markdown(f"**{check.replace('_', ' ').title()}**")
+                                st.write(mitigation['documentation'])
+                                if mitigation.get('links'):
+                                    st.markdown("**Supporting Links:**")
+                                    for link in mitigation['links']:
+                                        st.markdown(f"- [{link}]({link})")
+                                st.markdown("---")
+
+def update_mitigation_doc(check):
+    """Update mitigation documentation in session state"""
+    st.session_state.mitigations[check]['documentation'] = st.session_state[f"mitigation_doc_{check}"]
+
+def update_mitigation_links(check):
+    """Update mitigation links in session state"""
+    st.session_state.mitigations[check]['links'] = st.session_state[f"mitigation_links_{check}"]
+
+with col2:
+    st.metric("Token Program", "Token-2022" if "Token 2022" in result_dict.get('owner_program', '') else "SPL Token")
         
-        with col2:
-            st.metric("Token Program", "Token-2022" if "Token 2022" in result_dict.get('owner_program', '') else "SPL Token")
+# Display authorities in columns
+col1, col2 = st.columns(2)
+with col1:
+    st.metric("Update Authority", result_dict.get('update_authority', 'None'))
+with col2:
+    st.metric("Freeze Authority", result_dict.get('freeze_authority', 'None'))
         
-        # Display authorities in columns
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric("Update Authority", result_dict.get('update_authority', 'None'))
-        with col2:
-            st.metric("Freeze Authority", result_dict.get('freeze_authority', 'None'))
+# Display pump.fun specific metrics if applicable
+if "Pump.Fun Mint Authority" in str(result_dict.get('update_authority', '')):
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("Genuine Pump Fun Token", "Yes" if result_dict.get('is_genuine_pump_fun_token', False) else "No")
+    with col2:
+        st.metric("Graduated to Raydium", "Yes" if result_dict.get('token_graduated_to_raydium', False) else "No")
         
-        # Display pump.fun specific metrics if applicable
-        if "Pump.Fun Mint Authority" in str(result_dict.get('update_authority', '')):
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric("Genuine Pump Fun Token", "Yes" if result_dict.get('is_genuine_pump_fun_token', False) else "No")
-            with col2:
-                st.metric("Graduated to Raydium", "Yes" if result_dict.get('token_graduated_to_raydium', False) else "No")
+        if result_dict.get('interacted_with'):
+            st.metric("Interaction Type", result_dict.get('interacted_with', 'None'))
             
-            if result_dict.get('interacted_with'):
-                st.metric("Interaction Type", result_dict.get('interacted_with', 'None'))
-                
-                if result_dict.get('interacting_account'):
-                    with st.expander("Interaction Details"):
-                        st.text("Interacting Account")
-                        st.code(result_dict.get('interacting_account'))
-                        if result_dict.get('interaction_signature'):
-                            st.text("Transaction Signature")
-                            st.code(result_dict.get('interaction_signature'))
+            if result_dict.get('interacting_account'):
+                with st.expander("Interaction Details"):
+                    st.text("Interacting Account")
+                    st.code(result_dict.get('interacting_account'))
+                    if result_dict.get('interaction_signature'):
+                        st.text("Transaction Signature")
+                        st.code(result_dict.get('interaction_signature'))
         
-        # If token is Token-2022, display extension features
-        if "Token 2022" in result_dict.get('owner_program', ''):
-            st.subheader("Token-2022 Features")
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric("Permanent Delegate", result_dict.get('permanent_delegate', 'None'))
-                st.metric("Transfer Hook", result_dict.get('transfer_hook', 'None'))
-            with col2:
-                st.metric("Transaction Fees", result_dict.get('transaction_fees', 'None'))
-                st.metric("Confidential Transfers", result_dict.get('confidential_transfers', 'None'))
+# If token is Token-2022, display extension features
+if "Token 2022" in result_dict.get('owner_program', ''):
+    st.subheader("Token-2022 Features")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("Permanent Delegate", result_dict.get('permanent_delegate', 'None'))
+        st.metric("Transfer Hook", result_dict.get('transfer_hook', 'None'))
+    with col2:
+        st.metric("Transaction Fees", result_dict.get('transaction_fees', 'None'))
+        st.metric("Confidential Transfers", result_dict.get('confidential_transfers', 'None'))
         
-        # Display full results
-        with st.expander("View Raw Data"):
-            st.json(result_dict)
+# Display full results
+with st.expander("View Raw Data"):
+    st.json(result_dict)
         
-        # Download buttons
-        col1, col2 = st.columns(2)
-        with col1:
+# Download buttons
+col1, col2 = st.columns(2)
+with col1:
+    st.download_button(
+        "Download JSON",
+        data=json.dumps(result_dict, indent=2),
+        file_name=f"token_analysis_{token_address}.json",
+        mime="application/json"
+    )
+        
+with col2:
+    with tempfile.TemporaryDirectory() as temp_dir:
+        pdf_path = create_pdf(result_dict, temp_dir)
+        with open(pdf_path, "rb") as pdf_file:
             st.download_button(
-                "Download JSON",
-                data=json.dumps(result_dict, indent=2),
-                file_name=f"token_analysis_{token_address}.json",
-                mime="application/json"
+                "Download PDF",
+                data=pdf_file.read(),
+                file_name=f"token_analysis_{token_address}.pdf",
+                mime="application/pdf"
             )
-        
-        with col2:
-            with tempfile.TemporaryDirectory() as temp_dir:
-                pdf_path = create_pdf(result_dict, temp_dir)
-                with open(pdf_path, "rb") as pdf_file:
-                    st.download_button(
-                        "Download PDF",
-                        data=pdf_file.read(),
-                        file_name=f"token_analysis_{token_address}.pdf",
-                        mime="application/pdf"
-                    )
 
 with tab2:
     # Reviewer information first
