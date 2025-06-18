@@ -2,7 +2,7 @@ import streamlit as st
 import asyncio
 import aiohttp
 import json
-from spl_token_analysis import get_token_details_async, process_tokens_concurrently
+from spl_token_analysis import analyze_token_address, process_tokens_concurrently
 from spl_report_generator import create_pdf
 import tempfile
 import os
@@ -173,16 +173,15 @@ with tab1:
         with st.spinner("Analyzing token..."):
             async def get_token():
                 async with aiohttp.ClientSession() as session:
-                    details, _ = await get_token_details_async(token_address, session)
-                    return details
+                    return await analyze_token_address(token_address, session)
             
             try:
                 result = asyncio.run(get_token())
-                if isinstance(result, str):  # Error message
-                    st.error(result)
-                else:
-                    st.session_state.analysis_results = result.to_dict()
+                if result['status'] == 'success':
+                    st.session_state.analysis_results = result
                     st.session_state.mitigation_applied = False
+                else:
+                    st.error(f"Error: {result['error']}")
             except Exception as e:
                 st.error(f"Error analyzing token: {str(e)}")
     
@@ -301,70 +300,70 @@ with tab1:
                                         st.markdown(f"- [{link}]({link})")
                                 st.markdown("---")
 
-with col2:
-    st.metric("Token Program", "Token-2022" if "Token 2022" in result_dict.get('owner_program', '') else "SPL Token")
+            with col2:
+                st.metric("Token Program", "Token-2022" if "Token 2022" in result_dict.get('owner_program', '') else "SPL Token")
         
-# Display authorities in columns
-col1, col2 = st.columns(2)
-with col1:
-    st.metric("Update Authority", result_dict.get('update_authority', 'None'))
-with col2:
-    st.metric("Freeze Authority", result_dict.get('freeze_authority', 'None'))
+        # Display authorities in columns
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Update Authority", result_dict.get('update_authority', 'None'))
+        with col2:
+            st.metric("Freeze Authority", result_dict.get('freeze_authority', 'None'))
         
-# Display pump.fun specific metrics if applicable
-if "Pump.Fun Mint Authority" in str(result_dict.get('update_authority', '')):
-    col1, col2 = st.columns(2)
-    with col1:
-        st.metric("Genuine Pump Fun Token", "Yes" if result_dict.get('is_genuine_pump_fun_token', False) else "No")
-    with col2:
-        st.metric("Graduated to Raydium", "Yes" if result_dict.get('token_graduated_to_raydium', False) else "No")
+        # Display pump.fun specific metrics if applicable
+        if "Pump.Fun Mint Authority" in str(result_dict.get('update_authority', '')):
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Genuine Pump Fun Token", "Yes" if result_dict.get('is_genuine_pump_fun_token', False) else "No")
+            with col2:
+                st.metric("Graduated to Raydium", "Yes" if result_dict.get('token_graduated_to_raydium', False) else "No")
+                
+                if result_dict.get('interacted_with'):
+                    st.metric("Interaction Type", result_dict.get('interacted_with', 'None'))
+                    
+                    if result_dict.get('interacting_account'):
+                        with st.expander("Interaction Details"):
+                            st.text("Interacting Account")
+                            st.code(result_dict.get('interacting_account'))
+                            if result_dict.get('interaction_signature'):
+                                st.text("Transaction Signature")
+                                st.code(result_dict.get('interaction_signature'))
         
-        if result_dict.get('interacted_with'):
-            st.metric("Interaction Type", result_dict.get('interacted_with', 'None'))
-            
-            if result_dict.get('interacting_account'):
-                with st.expander("Interaction Details"):
-                    st.text("Interacting Account")
-                    st.code(result_dict.get('interacting_account'))
-                    if result_dict.get('interaction_signature'):
-                        st.text("Transaction Signature")
-                        st.code(result_dict.get('interaction_signature'))
+        # If token is Token-2022, display extension features
+        if "Token 2022" in result_dict.get('owner_program', ''):
+            st.subheader("Token-2022 Features")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Permanent Delegate", result_dict.get('permanent_delegate', 'None'))
+                st.metric("Transfer Hook", result_dict.get('transfer_hook', 'None'))
+            with col2:
+                st.metric("Transaction Fees", result_dict.get('transaction_fees', 'None'))
+                st.metric("Confidential Transfers", result_dict.get('confidential_transfers', 'None'))
         
-# If token is Token-2022, display extension features
-if "Token 2022" in result_dict.get('owner_program', ''):
-    st.subheader("Token-2022 Features")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.metric("Permanent Delegate", result_dict.get('permanent_delegate', 'None'))
-        st.metric("Transfer Hook", result_dict.get('transfer_hook', 'None'))
-    with col2:
-        st.metric("Transaction Fees", result_dict.get('transaction_fees', 'None'))
-        st.metric("Confidential Transfers", result_dict.get('confidential_transfers', 'None'))
+        # Display full results
+        with st.expander("View Raw Data"):
+            st.json(result_dict)
         
-# Display full results
-with st.expander("View Raw Data"):
-    st.json(result_dict)
-        
-# Download buttons
-col1, col2 = st.columns(2)
-with col1:
-    st.download_button(
-        "Download JSON",
-        data=json.dumps(result_dict, indent=2),
-        file_name=f"token_analysis_{token_address}.json",
-        mime="application/json"
-    )
-        
-with col2:
-    with tempfile.TemporaryDirectory() as temp_dir:
-        pdf_path = create_pdf(result_dict, temp_dir)
-        with open(pdf_path, "rb") as pdf_file:
+        # Download buttons
+        col1, col2 = st.columns(2)
+        with col1:
             st.download_button(
-                "Download PDF",
-                data=pdf_file.read(),
-                file_name=f"token_analysis_{token_address}.pdf",
-                mime="application/pdf"
+                "Download JSON",
+                data=json.dumps(result_dict, indent=2),
+                file_name=f"token_analysis_{token_address}.json",
+                mime="application/json"
             )
+        
+        with col2:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                pdf_path = create_pdf(result_dict, temp_dir)
+                with open(pdf_path, "rb") as pdf_file:
+                    st.download_button(
+                        "Download PDF",
+                        data=pdf_file.read(),
+                        file_name=f"token_analysis_{token_address}.pdf",
+                        mime="application/pdf"
+                    )
 
 with tab2:
     # Reviewer information first
