@@ -210,7 +210,7 @@ def create_pdf(token_data, output_dir):
         alignment=4,
         fontName='Helvetica'
     )
-    conflicts_text = """<b>Conflicts Certification:</b> To the best of your knowledge, please confirm that you and your immediate family: (1) have not invested more than $10,000 in the asset or its issuer, (2) do not own more than 1% of the asset outstanding, and (3) do not have a personal relationship with the issuer's management, governing body, or owners. For wrapped assets, the underlying asset must be considered for the purpose of this conflict certification, unless: 1) the asset is a stablecoin; or 2) has a market cap of over $100 billion dollars. For multi-chain assets every version of the multi-chain asset must be counted together for the purpose of this conflict certification."""
+    conflicts_text = """<b>Conflicts Certification:</b> To the best of your knowledge, please confirm that you and your immediate family: (1) have not invested more than $1,000 in the asset or its issuer, (2) do not own more than 1% of the asset outstanding, and (3) do not have a personal relationship with the issuer's management, governing body, or owners. For wrapped assets, the underlying asset must be considered for the purpose of this conflict certification, unless: 1) the asset is a stablecoin; or 2) has a market cap of over $100 billion dollars. For multi-chain assets every version of the multi-chain asset must be counted together for the purpose of this conflict certification."""
     elements.append(Paragraph(conflicts_text, conflicts_style))
     elements.append(Spacer(1, 10))
     
@@ -375,6 +375,10 @@ trusted Token Program"""
     elements.append(Paragraph(owner_assessment, risk_body_style))
     elements.append(Spacer(1, 8))
     
+    # Mitigations
+    elements.append(Paragraph("<b>Mitigations:</b>", risk_body_style))
+    elements.append(Paragraph("N/A", risk_body_style))
+    
     # Freeze Authority Check
     freeze_value = token_data.get('freeze_authority', 'None')
     has_no_freeze = freeze_value == 'None' or freeze_value is None or freeze_value == ''
@@ -393,29 +397,34 @@ trusted Token Program"""
     ))
     elements.append(Spacer(1, 8))
     
-    # Mitigations for Freeze Authority
+    # Mitigations
     elements.append(Paragraph("<b>Mitigations:</b>", risk_body_style))
-    if not has_no_freeze and token_data.get('mitigations', {}).get('freeze_authority'):
-        mitigation = token_data['mitigations']['freeze_authority']
-        if mitigation['applied']:
-            # Create hyperlinked text
-            doc_text = mitigation['documentation']
-            for link in mitigation.get('links', []):
-                if link in doc_text:
-                    doc_text = doc_text.replace(link, f'<link href="{link}">{link}</link>')
-            elements.append(Paragraph(doc_text, risk_body_style))
-    else:
-        elements.append(Paragraph("N/A", risk_body_style))
+    elements.append(Paragraph("N/A", risk_body_style))
     
     # Add Token 2022 specific checks if applicable
     if "Token 2022" in token_data.get('owner_program', ''):
+        # Update Authority Check
+        update_value = token_data.get('update_authority', 'None')
+        has_no_update = update_value == 'None' or update_value is None or update_value == ''
+        update_header = f"""{'1' if has_no_update else '5'} | No Update Authority {'- Pass' if has_no_update else '- Fail'}"""
+        elements.append(Paragraph(update_header, risk_subheader_style))
+        update_description = """A missing Update Authority means that the token configuration can't be altered."""
+        elements.append(Paragraph(update_description, risk_body_style))
+        elements.append(Paragraph("<b>Assessment:</b>", risk_body_style))
+        elements.append(Paragraph(
+            f"""As token metadata indicates, the update authority is: {update_value}.""",
+            risk_body_style
+        ))
+        elements.append(Spacer(1, 8))
+        elements.append(Paragraph("<b>Mitigations:</b>", risk_body_style))
+        elements.append(Paragraph("N/A", risk_body_style))
+
         # Permanent Delegate Check
         delegate_value = token_data.get('permanent_delegate', 'None')
         has_no_delegate = delegate_value == 'None' or delegate_value is None or delegate_value == ''
         delegate_header = f"""{'1' if has_no_delegate else '5'} | No Permanent Delegate {'- Pass' if has_no_delegate else '- Fail'}"""
         elements.append(Paragraph(delegate_header, risk_subheader_style))
-        
-        delegate_description = """A missing Permanent Delegate means that it is set to null and therefore no delegate can burn or transfer any amount of tokens."""
+        delegate_description = """Permanent Delegate means that it is set to null and therefore Therefore, no delegate can burn or transfer any amount of tokens."""
         elements.append(Paragraph(delegate_description, risk_body_style))
         elements.append(Paragraph("<b>Assessment:</b>", risk_body_style))
         elements.append(Paragraph(
@@ -423,19 +432,25 @@ trusted Token Program"""
             risk_body_style
         ))
         elements.append(Spacer(1, 8))
-        
-        # Mitigations for Permanent Delegate
         elements.append(Paragraph("<b>Mitigations:</b>", risk_body_style))
-        if not has_no_delegate and token_data.get('mitigations', {}).get('permanent_delegate'):
-            mitigation = token_data['mitigations']['permanent_delegate']
-            if mitigation['applied']:
-                doc_text = mitigation['documentation']
-                for link in mitigation.get('links', []):
-                    if link in doc_text:
-                        doc_text = doc_text.replace(link, f'<link href="{link}">{link}</link>')
-                elements.append(Paragraph(doc_text, risk_body_style))
-        else:
-            elements.append(Paragraph("N/A", risk_body_style))
+        elements.append(Paragraph("N/A", risk_body_style))
+        
+        # Transaction Fees Check
+        fees_value = token_data.get('transaction_fees', 'None')
+        has_no_fees = (fees_value == 'None' or fees_value is None or fees_value == '' 
+                      or fees_value == '0' or fees_value == 0)
+        fees_header = f"""{'1' if has_no_fees else '5'} | No Transaction Fees {'- Pass' if has_no_fees else '- Fail'}"""
+        elements.append(Paragraph(fees_header, risk_subheader_style))
+        fees_description = """Transaction fees are set to 0 and therefore no transaction fees are possible and send/receive token amounts are the same as expected."""
+        elements.append(Paragraph(fees_description, risk_body_style))
+        elements.append(Paragraph("<b>Assessment:</b>", risk_body_style))
+        elements.append(Paragraph(
+            f"""As token metadata indicates, the transaction fees are: {fees_value}.""",
+            risk_body_style
+        ))
+        elements.append(Spacer(1, 8))
+        elements.append(Paragraph("<b>Mitigations:</b>", risk_body_style))
+        elements.append(Paragraph("N/A", risk_body_style))
         
         # Transfer Hook Check
         hook_value = token_data.get('transfer_hook', 'None')
@@ -451,26 +466,14 @@ trusted Token Program"""
             risk_body_style
         ))
         elements.append(Spacer(1, 8))
-        
-        # Mitigations for Transfer Hook
         elements.append(Paragraph("<b>Mitigations:</b>", risk_body_style))
-        if not has_no_hook and token_data.get('mitigations', {}).get('transfer_hook'):
-            mitigation = token_data['mitigations']['transfer_hook']
-            if mitigation['applied']:
-                doc_text = mitigation['documentation']
-                for link in mitigation.get('links', []):
-                    if link in doc_text:
-                        doc_text = doc_text.replace(link, f'<link href="{link}">{link}</link>')
-                elements.append(Paragraph(doc_text, risk_body_style))
-        else:
-            elements.append(Paragraph("N/A", risk_body_style))
+        elements.append(Paragraph("N/A", risk_body_style))
         
         # Confidential Transfers Check
         confidential_value = token_data.get('confidential_transfers', 'None')
         has_no_confidential = confidential_value == 'None' or confidential_value is None or confidential_value == ''
         confidential_header = f"""{'1' if has_no_confidential else '5'} | No Confidential Transfers {'- Pass' if has_no_confidential else '- Fail'}"""
         elements.append(Paragraph(confidential_header, risk_subheader_style))
-        
         confidential_description = """The confidential transfer is a non-anonymous, non-private transfer that publicly shares the source, destination, and token type, but uses zero-knowledge proofs to encrypt the amount of the transfer."""
         elements.append(Paragraph(confidential_description, risk_body_style))
         elements.append(Paragraph("<b>Assessment:</b>", risk_body_style))
@@ -479,48 +482,8 @@ trusted Token Program"""
             risk_body_style
         ))
         elements.append(Spacer(1, 8))
-        
-        # Mitigations for Confidential Transfers
         elements.append(Paragraph("<b>Mitigations:</b>", risk_body_style))
-        if not has_no_confidential and token_data.get('mitigations', {}).get('confidential_transfers'):
-            mitigation = token_data['mitigations']['confidential_transfers']
-            if mitigation['applied']:
-                doc_text = mitigation['documentation']
-                for link in mitigation.get('links', []):
-                    if link in doc_text:
-                        doc_text = doc_text.replace(link, f'<link href="{link}">{link}</link>')
-                elements.append(Paragraph(doc_text, risk_body_style))
-        else:
-            elements.append(Paragraph("N/A", risk_body_style))
-        
-        # Transaction Fees Check
-        fees_value = token_data.get('transaction_fees', 'None')
-        has_no_fees = (fees_value == 'None' or fees_value is None or fees_value == '' 
-                      or fees_value == '0' or fees_value == 0)
-        fees_header = f"""{'1' if has_no_fees else '5'} | No Transaction Fees {'- Pass' if has_no_fees else '- Fail'}"""
-        elements.append(Paragraph(fees_header, risk_subheader_style))
-        
-        fees_description = """Transaction fees are set to 0 and therefore no transaction fees are possible and send/receive token amounts are the same as expected."""
-        elements.append(Paragraph(fees_description, risk_body_style))
-        elements.append(Paragraph("<b>Assessment:</b>", risk_body_style))
-        elements.append(Paragraph(
-            f"""As token metadata indicates, the transaction fees are: {fees_value}.""",
-            risk_body_style
-        ))
-        elements.append(Spacer(1, 8))
-        
-        # Mitigations for Transaction Fees
-        elements.append(Paragraph("<b>Mitigations:</b>", risk_body_style))
-        if not has_no_fees and token_data.get('mitigations', {}).get('transfer_fees'):
-            mitigation = token_data['mitigations']['transfer_fees']
-            if mitigation['applied']:
-                doc_text = mitigation['documentation']
-                for link in mitigation.get('links', []):
-                    if link in doc_text:
-                        doc_text = doc_text.replace(link, f'<link href="{link}">{link}</link>')
-                elements.append(Paragraph(doc_text, risk_body_style))
-        else:
-            elements.append(Paragraph("N/A", risk_body_style))
+        elements.append(Paragraph("N/A", risk_body_style))
     
     # Build PDF
     doc.build(elements)
